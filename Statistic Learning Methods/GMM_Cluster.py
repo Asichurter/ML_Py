@@ -2,7 +2,7 @@
 """
 Created on Wed Feb 13 15:37:07 2019
 
-@author: 10904
+@author: Asichurter
 """
 
 from scipy.stats import multivariate_normal
@@ -68,6 +68,7 @@ class GMM_Cluster:
                     e = (self.X[j]-self.Ave[i]).reshape(self.X.shape[1], 1)
                     #每一项为γji*(xj-μi)(xj-μi)T
                     cov_head += post_prior[j][i]*(np.dot(e, e.T))
+                #为了防止计算过程中，协方差矩阵非满秩，每轮计算都在对角线上增加一个极小的正则项来防止计算中止
                 self.Cov[i] = cov_head/tail + np.eye(self.X.shape[1],self.X.shape[1])/1e6
                 
                 #更新混合系数
