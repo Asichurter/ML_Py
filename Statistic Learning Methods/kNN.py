@@ -10,6 +10,7 @@ from sklearn.neighbors import KDTree
 import numpy as np
 
 #这是一句用于github测试的注释
+#这是github客户端同步的测试注释
 
 data = np.array([[2,3],[5,4],[9,6],[4,7],[8,1],[7,2],[3,4],[1,0],[5,8],[6,2]])
 tree = KDTree(data, leaf_size = 2)
