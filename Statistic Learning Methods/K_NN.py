@@ -21,6 +21,7 @@ class KNN:
             dists.append([d1[1],self.get_dist(d1[0],x,metric)])
         data_heap = Heap(dists, False, lambda x,y: x[1] > y[1])
         neighbors = {}
+        #最远的一个点的距离作为半径，仅欧氏距离适用
         radius = 0
         for i in range(self.K):
             l,d = data_heap.top(True)
@@ -73,8 +74,8 @@ if __name__ == '__main__':
     
     model = KNN(data,20)
     
-    X = random.uniform(-5,5)
-    Y = random.uniform(-10,5)
+    X = random.uniform(-20,20)
+    Y = random.uniform(-20,20)
     
     plt.xlim(-20,20)
     plt.ylim(-20,20)

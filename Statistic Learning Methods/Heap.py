@@ -107,7 +107,7 @@ class Heap:
     
 if __name__ == '__main__':
     data = random.sample([i for i in range(50)], 10)
-    heap = Heap(data, False)
+    heap = Heap(data)
     print(heap.self_check())
     while heap.length() > 0:
         print(heap.top(True))
