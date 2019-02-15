@@ -22,7 +22,7 @@ class GMM_Cluster:
         self.PostPrior = None
         self.Clusters = None
         
-    def train(self, data, k, cov_para=200, max_iter=150):
+    def train(self, data, k, cov_para=100, max_iter=150):
         #初始化
         #初始化均值向量，这里默认为二维的
         #x范围为-20到20之间平均点，y始终为0
