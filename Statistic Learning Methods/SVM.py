@@ -338,7 +338,7 @@ if __name__ == '__main__':
     
     a = random.uniform(-5,5)
     b = random.uniform(-10,10)
-    epoch = 150
+    epoch = 200
     datas = []
     labels = []
     print('生成的直线: ','y=%f*x+%f'%(a,b))
