@@ -7,7 +7,7 @@ Created on Fri Feb 15 14:48:32 2019
 
 from Heap import Heap 
 import numpy as np
-import random
+import random  
 import matplotlib.pyplot as plt
 
 class KNN:
