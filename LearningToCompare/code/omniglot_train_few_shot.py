@@ -26,7 +26,7 @@ parser.add_argument("-w","--class_num",type = int, default = 5)
 parser.add_argument("-s","--sample_num_per_class",type = int, default = 5)
 parser.add_argument("-b","--batch_num_per_class",type = int, default = 15)
 #原值为1000000
-parser.add_argument("-e","--episode",type = int, default= 10000)
+parser.add_argument("-e","--episode",type = int, default= 1000)
 #原值为1000
 parser.add_argument("-t","--test_episode", type = int, default = 100)
 parser.add_argument("-l","--learning_rate", type = float, default = 0.001)
@@ -312,7 +312,7 @@ def main():
             print("episode:",episode+1,"loss: ",loss.item())
 
         #原值的测试周期是10
-        if (episode+1)%100 == 0:
+        if (episode+1)%50 == 0:
             # test
             print("Testing...")
             total_rewards = 0
@@ -357,8 +357,8 @@ def main():
             if test_accuracy > last_accuracy:
 
                 # save networks
-                torch.save(feature_encoder.state_dict(),str("./models/omniglot_feature_encoder_" + str(CLASS_NUM) +"way_" + str(SAMPLE_NUM_PER_CLASS) +"shot.pkl"))
-                torch.save(relation_network.state_dict(),str("./models/omniglot_relation_network_"+ str(CLASS_NUM) +"way_" + str(SAMPLE_NUM_PER_CLASS) +"shot.pkl"))
+                torch.save(feature_encoder.state_dict(),str("omniglot_feature_encoder_" + str(CLASS_NUM) +"way_" + str(SAMPLE_NUM_PER_CLASS) +"shot.pkl"))
+                torch.save(relation_network.state_dict(),str("omniglot_relation_network_"+ str(CLASS_NUM) +"way_" + str(SAMPLE_NUM_PER_CLASS) +"shot.pkl"))
 
                 print("save networks for episode:",episode)
 
