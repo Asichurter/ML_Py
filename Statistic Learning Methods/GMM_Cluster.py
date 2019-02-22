@@ -69,7 +69,7 @@ class GMM_Cluster:
                     #每一项为γji*(xj-μi)(xj-μi)T
                     cov_head += post_prior[j][i]*(np.dot(e, e.T))
                 #为了防止计算过程中，协方差矩阵非满秩，每轮计算都在对角线上增加一个极小的正则项来防止计算中止
-                self.Cov[i] = cov_head/tail + np.eye(self.X.shape[1],self.X.shape[1])/1e6
+                self.Cov[i] = cov_head/tail + np.eye(self.X.shape[1],self.X.shape[1])/1e10
                 
                 #更新混合系数
                 self.Alpha[i] = tail/self.X.shape[0]   
@@ -108,29 +108,27 @@ def get_data(x, y, r, num):
     return data
     
 if __name__ == '__main__':
-    model = GMM_Cluster()
+    GMM = GMM_Cluster()
     data = []
-    data += get_data(-10,15,3,30)
-    data += (get_data(-10,-10,3,30))
-    data += (get_data(10,12,3,30))
-    data += get_data(5,-5,3,30)
-    model.train(data, 4)
+    data += get_data(-10,15,5,30)
+    data += (get_data(-10,-10,5,30))
+    data += (get_data(10,12,5,30))
+    data += get_data(5,-5,5,30)
+    GMM.train(data, 4)
     
     KM = K_Means()
     KM.train(data, 4)
     plt.title('GMM Clustering')
     plt.xlim(-20,20)
     plt.ylim(-20,20)
-    plt.plot([x[0] for x in model.Clusters[0]], [x[1] for x in model.Clusters[0]], 'o', color='red')
-    plt.plot([x[0] for x in model.Clusters[1]], [x[1] for x in model.Clusters[1]], 'o', color='green')
-    plt.plot([x[0] for x in model.Clusters[2]], [x[1] for x in model.Clusters[2]], 'o', color='blue')
-    plt.plot([x[0] for x in model.Clusters[3]], [x[1] for x in model.Clusters[3]], 'o', color='yellow')
+    plt.plot([x[0] for x in GMM.Clusters[0]], [x[1] for x in GMM.Clusters[0]], 'o', color='red')
+    plt.plot([x[0] for x in GMM.Clusters[1]], [x[1] for x in GMM.Clusters[1]], 'o', color='green')
+    plt.plot([x[0] for x in GMM.Clusters[2]], [x[1] for x in GMM.Clusters[2]], 'o', color='blue')
+    plt.plot([x[0] for x in GMM.Clusters[3]], [x[1] for x in GMM.Clusters[3]], 'o', color='yellow')
     plt.show()
     
-    clusters = []
-    for c in KM.C:
-        clusters.append(c)
-    ave = model.Ave
+    clusters = KM.C
+    ave = KM.Ave
     #print(clusters)
     plt.title('K-Means Clustering')
     plt.xlim(-20,20)
@@ -139,8 +137,12 @@ if __name__ == '__main__':
     plt.plot([x[0] for x in clusters[1]], [x[1] for x in clusters[1]], 'o', color='green')
     plt.plot([x[0] for x in clusters[2]], [x[1] for x in clusters[2]], 'o', color='blue')
     plt.plot([x[0] for x in clusters[3]], [x[1] for x in clusters[3]], 'o', color='yellow')
-    plt.plot([x[0] for x in ave], [x[1] for x in ave], 'x', color='black')
+    plt.plot([ave[0][0]], [ave[0][1]], 'x', color='black', label='red center:%.2f,%.2f'%(ave[0][0],ave[0][1]))
+    plt.plot([ave[1][0]], [ave[1][1]], 'x', color='black', label='green center:%.2f,%.2f'%(ave[1][0],ave[1][1]))
+    plt.plot([ave[2][0]], [ave[2][1]], 'x', color='black', label='blue center:%.2f,%.2f'%(ave[2][0],ave[2][1]))
+    plt.plot([ave[3][0]], [ave[3][1]], 'x', color='black', label='yellow center:%.2f,%.2f'%(ave[3][0],ave[3][1]))
     #plt.plot([x[0] for x in clusters[3]], [x[1] for x in clusters[3]], 'o', color='yellow')
+    #plt.legend()
     plt.show()
 
     

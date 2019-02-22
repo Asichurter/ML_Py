@@ -79,9 +79,9 @@ if __name__ == '__main__':
     
     plt.xlim(-20,20)
     plt.ylim(-20,20)
-    plt.plot([x[0][0] for x in data_1], [x[0][1] for x in data_1], 'o', color='red')
-    plt.plot([x[0][0] for x in data_2], [x[0][1] for x in data_2], 'o', color='green')
-    plt.plot([x[0][0] for x in data_3], [x[0][1] for x in data_3], 'o', color='blue')
+    plt.plot([x[0][0] for x in data_1], [x[0][1] for x in data_1], 'o', color='red', label='Cluster A')
+    plt.plot([x[0][0] for x in data_2], [x[0][1] for x in data_2], 'o', color='green', label='Cluster B')
+    plt.plot([x[0][0] for x in data_3], [x[0][1] for x in data_3], 'o', color='blue', label='Cluster C')
     l,r = model.predict([X,Y])
     XX,YY = circle_drawpoints(X,Y,r,200)
     if l == 1:
@@ -92,8 +92,9 @@ if __name__ == '__main__':
         plt.plot([X], [Y], 'o', color='blue')
     else:
         print('出错!')
-    plt.plot([X], [Y], 'kx')
+    plt.plot([X], [Y], 'kx', label='target point')
     plt.plot(XX, YY, 'k')
+    plt.legend()
     plt.show()
     
     
