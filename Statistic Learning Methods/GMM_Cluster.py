@@ -110,10 +110,10 @@ def get_data(x, y, r, num):
 if __name__ == '__main__':
     GMM = GMM_Cluster()
     data = []
-    data += get_data(-10,15,5,30)
-    data += (get_data(-10,-10,5,30))
-    data += (get_data(10,12,5,30))
-    data += get_data(5,-5,5,30)
+    data += get_data(-10,15,5,50)
+    data += (get_data(-10,-10,5,50))
+    data += (get_data(10,12,5,50))
+    data += get_data(5,-5,5,50)
     GMM.train(data, 4)
     
     KM = K_Means()

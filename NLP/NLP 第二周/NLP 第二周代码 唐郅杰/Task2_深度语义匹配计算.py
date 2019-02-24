@@ -7,8 +7,10 @@
 #      3.将W2V表示的浅层词向量作为神经网络深入，得到题目的深层向量表示
 #      4.利用得到的语义向量，计算语义相似度
 #      5.利用标注的测试集，对训练得到的模型进行评估
-
+import os
+import numpy
 import re
+import random
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score, roc_curve, auc
 import matplotlib.pyplot as plt
 from keras.models import Model, load_model
@@ -17,7 +19,9 @@ from keras.layers import Input, Dense, Dropout, Flatten, Conv1D, AveragePooling1
 from keras.optimizers import SGD
 from gensim.models.word2vec import Word2Vec
 from keras.preprocessing.sequence import pad_sequences
-import numpy
+#import keras.backend.tensorflow_backend as KTF
+
+#os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 #题目最大词语数量
 Max_Word = 100
@@ -32,23 +36,23 @@ train_limit = 5000
 test_limit = 5000
 
 #训练轮数
-epochs = 20
+epochs = 40
 
 #标签的概率截点
 Threhold = 0.5
 
 #模型的保存/加载地址
-save_address = r'8.26/my_model_final.h5'
-load_address = r'8.26/my_model_final.h5'
+save_address = r'my_model_final.h5'
+load_address = r'my_model_final_20181224.h5'
 
 #加载已有模型还是重新训练
-if_train = False
+if_train = True
 
 #人工选择的进行语义相似度进行计算的题目
 my_pre = [0, 56, 888, 300, 400]
 
 #文本输入
-out = open(r'8.26/sim.txt', 'w', encoding='UTF-8')
+out = open(r'sim.txt', 'w', encoding='UTF-8')
 
 #用于替换题目中LaTex中的数学关键字
 def characters_substitude(sentence):
@@ -108,6 +112,14 @@ def cos_similarity(l1, l2):
         return 0
     
     return (num / denom)
+
+def get_samples(source_left, source_right, num, total=1794, sample_num=100):
+    indexes = [i for i in range(total)]
+    sample_indexes = random.sample(indexes, sample_num)
+    samples_left = numpy.array([source_left[i] for i in sample_indexes])
+    samples_right = numpy.array([source_right[i] for i in sample_indexes])
+    samples_labels = numpy.array([all_test_lab[i] for i in sample_indexes])
+    return samples_left,samples_right,samples_labels
 
 #用于训练的内容
 all_train_con = []
@@ -192,7 +204,7 @@ fin.close()
 model = Word2Vec(all_train, sg=0, size=128, min_count=1, window=5, cbow_mean=1)
 
 #保存W2V模型
-model.save('8.26/我的W2V模型.model')
+model.save('我的W2V模型.model')
 print('*****模型保存成功*****')
 
 #创建用于临时储存单词向量的字典
@@ -292,7 +304,7 @@ for word,i in word_to_index.items():
         embedding_weights[i, :] = embedding_index[word]
     except KeyError:
         print('%s 不在词汇表内！' % word)
-numpy.savetxt(r'8.26/embedding_weights.txt', embedding_weights)
+numpy.savetxt(r'embedding_weights.txt', embedding_weights)
 print('*****权重矩阵构建完成*****')
 
 #如果重新训练的话
@@ -382,16 +394,17 @@ if if_train:
     my_model = Model(inputs=[input1, input2], outputs=dense2)
     
     #已弃用的随机梯度优化器
-    #sgd = SGD(lr=1.0e-2, decay=1.0e-3)
+    sgd = SGD(lr=1.0e-2, decay=1.0e-3)
     
     #编译。采用rmsprop作为优化器，二分类熵作为损失函数，准确率作为评价值
-    my_model.compile(optimizer='rmsprop', 
+    my_model.compile(optimizer='adam', 
                      loss='binary_crossentropy',
                      metrics=['accuracy'])
     
     #网络结构展示
     my_model.summary()
     print('*****开始训练*****')
+    input()
     
     #训练，有两个输入一个输出，输入值是词汇组成的文本矩阵，输出值是相似度
     #轮回数量由epochs指定，批处理大小为64（最优），验证比例为0.2
@@ -421,6 +434,8 @@ else:
     my_model = load_model(load_address)
     print('*****读取模型成功*****')
     
+    my_model.summary();
+    
     #模型评估
     score = my_model.evaluate([all_test_left_matrix, all_test_right_matrix], 
                               all_test_lab, 
@@ -431,11 +446,11 @@ else:
 #构建用于左侧输入的文本向量的神经网络向量化的模型，将会输出深度学习以后的语义向量
 #该向量由展平层的输出提供
 vec_model_1 = Model(inputs=my_model.input[0], 
-                    outputs=my_model.get_layer('flatten_5').output)
+                    outputs=my_model.get_layer('flatten_3').output)
 
 #右侧输入向量对应的模型，由右侧的展平层输出提供
 vec_model_2 = Model(inputs=my_model.input[1],
-                    outputs=my_model.get_layer('flatten_6').output)
+                    outputs=my_model.get_layer('flatten_4').output)
 
 #又左侧向量的向量化模型，预测选出的题目的向量
 pre_vec = vec_model_1.predict([[all_train_left_matrix[i] for i in my_pre]], 

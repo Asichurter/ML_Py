@@ -7,12 +7,7 @@ Created on Thu Feb 14 15:26:31 2019
 
 import math
 import random
-
-class Node:
-    def __init__(self, key, com):
-        self.Key = key
-        self.Comp = com
-        
+     
 class Heap:
     def __init__(self, data, max_min=True, compare=lambda x,y: x > y):
         self.Data = data
@@ -105,10 +100,15 @@ class Heap:
     def __str__(self):
         return str(self.Data)
     
+    def  __len__(self):
+        return len(self.Data)
+    
 if __name__ == '__main__':
-    data = random.sample([i for i in range(50)], 10)
+    data = random.sample([i for i in range(100)], 10)
+    print(data)
     heap = Heap(data)
     print(heap.self_check())
+    print(len(heap))
     while heap.length() > 0:
         print(heap.top(True))
 

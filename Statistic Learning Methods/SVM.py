@@ -44,7 +44,7 @@ class SVM:
                 else:
                     Labels.append(label)
         
-    def train(self, x, y, kernel=None, kernel_para=1, C=1, toler=1e-3, max_iter=5000):
+    def train(self, x, y, kernel=None, kernel_para=1, C=1, toler=5e-4, max_iter=5000):
         self.C = C
         self.Toler = toler
         self.X = np.array(x)
@@ -103,8 +103,7 @@ class SVM:
     #计算误差向量，实质上就是预测值减去实际值
     def e(self):
         return self.G - self.Y
- 
- 
+
     # 判断是否满足KKT条件，不满足的话，求出违反的绝对误差
     def satisfy_kkt(self, index, variable_absolute_error):
         val = self.Y[index] * self.G[index]
@@ -129,7 +128,7 @@ class SVM:
                 variable_absolute_error[index] = abs(val - 1 - self.Toler)
                 return False
             
-    def smo(self, max_iter):
+    def smo(self, max_iter, acc=1e-10):
         #print(Kij)
         N = self.X.shape[0]  # 有多少个样本
         
@@ -200,6 +199,7 @@ class SVM:
             # 找不到j，重新选择i
             #此时清理i对应的不可用的j，同时将当前的i加入到不可用列表中
             if j == -1:
+                #print('无合适的j')
                 visit_j.clear()
                 visit_i[i] = 1
                 continue
@@ -225,7 +225,8 @@ class SVM:
                 alpha2_new = L
      
             # 变化不大，重新选择j
-            if abs(alpha2_new - alpha2_old) < 1e-4:
+            if abs(alpha2_new - alpha2_old) < acc:
+                #print('alpha变化不大')
                 #此时先将i对应的j置为不可用
                 visit_j[j] = 1
                 continue
@@ -234,6 +235,7 @@ class SVM:
             
             #如果导致新的alpha<0，违背了KKT条件，于是不可用
             if alpha1_new < 0:
+                #print('新alpha违背KKT')
                 visit_j[j] = 1
                 continue
      
@@ -275,6 +277,7 @@ class SVM:
         return (np.dot(self.X[i],self.W)+self.B)*self.Y[i] == 1
  
 def draw(alpha, bet, data, label, C, mod, a, b):
+    plt.title('unlinear svm')
     plt.xlabel(u"x1")
     plt.xlim(-20,20)
     plt.ylim(-20,20)
@@ -320,7 +323,7 @@ def draw(alpha, bet, data, label, C, mod, a, b):
  
  
 def get_label(x,y):
-    if x**2+y**2/4 <= R**2:
+    if x**2+y**2/9 <= R**2:
         return 1
     else:
         return -1
@@ -331,11 +334,10 @@ def circle_drawpoints(x,y,r, num=100):
     P = np.pi*2
     for i in range(num):
         X.append(x+r*np.cos(i/num*P))
-        Y.append(y+2*r*np.sin(i/num*P))
+        Y.append(y+3*r*np.sin(i/num*P))
     return X,Y
- 
-if __name__ == '__main__':
-    
+
+def unlinear_main():    
     a = random.uniform(-5,5)
     b = random.uniform(-10,10)
     epoch = 200
@@ -349,31 +351,6 @@ if __name__ == '__main__':
         l = get_label(x,y)
         datas.append([x,y])
         labels.append(l)
-    #print(datas)
-    #print(labels)
-    '''
-    datas = [[-11.519469224968603, -8.644879142855038],
-             [-16.543290313593495, -14.807067053162001],
-             [13.915949304193504, -10.344548390705924],
-             [-2.979108734535526, -9.731374476756773],
-             [17.686967074198982, 17.456578105210575],
-             [9.645314131748343, 12.01819852710421],
-             [-19.282816933781515, -4.18000437767709],
-             [15.207911329941652, -0.7400049803698572],
-             [14.549385718481851, -11.414462190309234],
-             [2.1441784197034117, -15.107687248630782], 
-             [-11.496645216864284, -1.4312836073770825], 
-             [-2.50648148493395, -18.558027059721805],
-             [0.38824770464222524, -16.470133656939208],
-             [15.066252239848794, 17.170465904507275],
-             [-16.30973587846496, 1.536579214305], 
-             [13.706530320160837, -15.18876637617089],
-             [3.5959398708198087, -7.485096575636469], 
-             [0.03970066709614173, 16.569787532078564],
-             [-19.546762600719244, -14.161739751901248], 
-             [-0.3843871694965486, 9.35369727369271]]
-    labels = [-1, -1, 1, -1, 1, 1, -1, 1, 1, -1, -1, -1, -1, 1, -1, 1, 1, 1, -1, 1]
-    '''
     datas = np.array(datas)
     labels = np.array(labels)
     svm = SVM()
@@ -381,7 +358,7 @@ if __name__ == '__main__':
     C = 1
     eps = 1e-2  # 误差值
     max_iter = 10000  # 最大迭代次数
-    alpha, bb = svm.train(datas, labels, 'gauss', 10, C, eps, max_iter)
+    alpha, bb = svm.train(datas, labels, 'gauss', 4, C, eps, max_iter)
     #print(alpha)
     #print(bb)
     draw(alpha, bb, datas, labels, C, svm, a, b)
@@ -396,21 +373,73 @@ if __name__ == '__main__':
         test_x = random.uniform(-20,20)
         test_y = random.uniform(-20,20)
         l = svm.predict(np.array([test_x, test_y]))
-        #print('点:(',test_x,',',test_y,') ','\n实际标签: ', (1 if test_x**2+test_y**2 <= 100 else -1))
-        #print('预测标签: ', l)
-        #print('-------------------------------------------')
         if l == 1:
             test_X_pos.append(test_x)
             test_Y_pos.append(test_y)
-            if test_x**2+test_y**2/4 <= R**2:
+            if test_x**2+test_y**2/9 <= R**2:
                 correct_iters += 1
         else:
             test_X_neg.append(test_x)
             test_Y_neg.append(test_y)
-            if test_x**2 + test_y**2/4 > R**2:
+            if test_x**2 + test_y**2/9 > R**2:
                 correct_iters += 1
     plt.plot(test_X_pos, test_Y_pos, 'x', color='orange')
     plt.plot(test_X_neg, test_Y_neg, 'x', color='blue')
     plt.show()
     print('测试正确率: ', correct_iters/test_iters)
-    #'''
+    
+def linear_main():
+    k = random.uniform(-5,5)
+    b = random.uniform(-10,10)
+    datas = []
+    labels = []
+    num = 100
+    for i in range(num):
+        x = random.uniform(-20,20)
+        y = random.uniform(-20,20)
+        datas.append([x,y])
+        labels.append(1 if k*x+b >= y else -1)
+    C = 1
+    eps = 1e-2  # 误差值
+    max_iter = 10000  # 最大迭代次数    
+    svm = SVM()
+    alpha,bb = svm.train(np.array(datas), np.array(labels), 'linear', None, C, eps, max_iter)
+    plt.title('linear svm')
+    plt.xlim(-20,20)
+    plt.ylim(-20,20)
+    for i in range(len(datas)):
+        if labels[i] > 0:
+            plt.plot(datas[i][0], datas[i][1], 'or')
+        else:
+            plt.plot(datas[i][0], datas[i][1], 'og')
+    support_vecs_x = [x[0] for x,alp in zip(datas,alpha) if alp > 0 and alp < C]
+    support_vecs_y = [x[1] for x,alp in zip(datas,alpha) if alp > 0 and alp < C]
+    plt.plot(support_vecs_x, support_vecs_y, 'xc', label='support vevtor')
+    wx = 0.
+    wy = 0.
+    for i in range(len(datas)):
+        wx += alpha[i] * labels[i] * datas[i][0]
+        wy += alpha[i] * labels[i] * datas[i][1]
+    w = float(-1.*wx/wy)
+    bb = float(-1*bb/wy)
+    r = float(1./wy)
+    plt.plot([-20,20], [-20*w+bb, 20*w+bb], 'b-', label='seperate line')
+    plt.plot([-20,20], [-20*w+bb+r, 20*w+bb+r], 'b--', label='margin')
+    plt.plot([-20,20], [-20*w+bb-r, 20*w+bb-r], 'b--')
+    plt.plot([-20,20], [-20*k+b, 20*k+b], 'r-', label='real line')
+    plt.legend()
+    plt.show()
+    
+if __name__ == '__main__':
+    unlinear_main()
+    #linear_main()
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
