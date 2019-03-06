@@ -156,7 +156,7 @@ class SVM:
             for i in range(N):
                 if not self.satisfy_kkt(i, viable_indexes_and_absolute_error) and i not in visit_i:
                     viable_indexes.append(i)
-                    if 0 < self.Alpha[i] < C:
+                    if 0 < self.Alpha[i] < self. C:
                         viable_indexes_alpha_less_c.append(i)
             if len(viable_indexes) == 0:  # 找到最优解了，退出
                 break

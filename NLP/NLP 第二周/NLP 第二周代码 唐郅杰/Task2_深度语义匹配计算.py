@@ -15,10 +15,11 @@ from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_sc
 import matplotlib.pyplot as plt
 from keras.models import Model, load_model
 from keras import regularizers
-from keras.layers import Input, Dense, Dropout, Flatten, Conv1D, AveragePooling1D, Embedding, multiply 
-from keras.optimizers import SGD
+from keras.layers import Input, Dense, Dropout, Flatten, Conv1D, AveragePooling1D, Embedding, multiply,concatenate, LSTM
+from keras.optimizers import SGD, RMSprop, Adam
 from gensim.models.word2vec import Word2Vec
 from keras.preprocessing.sequence import pad_sequences
+from keras.initializers import RandomNormal
 #import keras.backend.tensorflow_backend as KTF
 
 #os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -36,7 +37,7 @@ train_limit = 5000
 test_limit = 5000
 
 #训练轮数
-epochs = 40
+epochs = 200
 
 #标签的概率截点
 Threhold = 0.5
@@ -121,6 +122,9 @@ def get_samples(source_left, source_right, num, total=1794, sample_num=100):
     samples_labels = numpy.array([all_test_lab[i] for i in sample_indexes])
     return samples_left,samples_right,samples_labels
 
+def centralize(data):
+    return data-numpy.mean(data, axis=0).reshape(1,data.shape[1]).repeat(data.shape[0], axis=0)
+
 #用于训练的内容
 all_train_con = []
 
@@ -145,8 +149,8 @@ fin = open('camp_dataset2/sim_question_train.txt', 'r', encoding='UTF-8')
 for i, line in enumerate(fin):
     
     #debug用
-    if i == train_limit:
-        break
+    #if i == train_limit:
+    #    break
     
     #文本预处理
     first, second, label = characters_substitude(line)
@@ -204,7 +208,7 @@ fin.close()
 model = Word2Vec(all_train, sg=0, size=128, min_count=1, window=5, cbow_mean=1)
 
 #保存W2V模型
-model.save('我的W2V模型.model')
+#model.save('我的W2V模型.model')
 print('*****模型保存成功*****')
 
 #创建用于临时储存单词向量的字典
@@ -254,7 +258,7 @@ for List in all_train_con:
     for word in List[0]:
         seq_left.append(word_to_index[word])
     for word in List[1]:
-        seq_right.append(word_to_index[word])
+        seq_right.append(word_to_index[word]) 
         
     #用于检测是否有句子长度超过设定值Max_Word   
     if len(seq_left) > 100:
@@ -311,6 +315,61 @@ print('*****权重矩阵构建完成*****')
 #搭建网络结构
 if if_train:
     
+    input1 = Input(shape=(Max_Word,))
+    input2 = Input(shape=(Max_Word,))
+    
+    embeding = Embedding(vocab_size, 
+                       Embed_Size, 
+                       input_length=Max_Word, 
+                       weights=[embedding_weights], 
+                       trainable=True,
+                       embeddings_regularizer=regularizers.l1(1e-5))
+    
+    embed1 = embeding(input1)
+    embed2 = embeding(input2)
+    
+    '''
+    lstm = LSTM(16, activation='tanh',
+                kernel_initializer='random_normal',
+                recurrent_initializer='random_normal',
+                kernel_regularizer=regularizers.l2(0.001),
+                recurrent_dropout=0.1,
+                dropout=0.2)
+    
+    lstm1 = lstm(embed1)
+    lstm2 = lstm(embed2)
+    '''
+    
+    dropout_1 = Dropout(0.5)
+    dropout_2 = Dropout(0.5)
+    flat = Flatten()
+    
+    conv1 = Conv1D(128, 3, 
+                   activation='tanh', 
+                   padding='same',
+                   kernel_regularizer=regularizers.l2(0.002),
+                   kernel_initializer='he_normal')   
+    
+    conv2 = Conv1D(128, 3, 
+                   activation='tanh', 
+                   padding='same',
+                   kernel_regularizer=regularizers.l2(0.002),
+                   kernel_initializer='he_normal')
+    
+    pool1 = AveragePooling1D(3, 
+                             padding='same', 
+                             strides=2)
+    pool2 = AveragePooling1D(3, 
+                             padding='same', 
+                             strides=2)
+    
+    
+    out1 = flat(dropout_2(pool2(conv2(dropout_1(pool1(conv1(embed1)))))))
+    out2 = flat(dropout_2(pool2(conv2(dropout_1(pool1(conv1(embed2)))))))
+    
+    merge = concatenate([out1, out2], axis=-1)
+    
+    '''
     #左侧输入层
     input1 = Input(shape=(Max_Word,))
     
@@ -325,7 +384,7 @@ if if_train:
     conv1 = Conv1D(64, 3, 
                    activation='relu', 
                    padding='same',
-                   kernel_regularizer=regularizers.l2(0.01))(embed1)
+                   kernel_regularizer=regularizers.l2(0.002))(embed1)
     
     #左侧丢失层
     drop1 = Dropout(0.3)(conv1)
@@ -335,8 +394,12 @@ if if_train:
                              padding='same', 
                              strides=2)(drop1)
     
+    dense_1 = Dense(256,
+                   activation='relu',
+                   kernel_regularizer=regularizers.l2(0.002))(pool1)
+    
     #左侧展平层
-    out1 = Flatten()(pool1) 
+    out1 = Flatten()(dense_1) 
 
     #右侧输入层
     input2 = Input(shape=(Max_Word,))
@@ -352,7 +415,7 @@ if if_train:
     conv2 = Conv1D(64, 3, 
                    activation='relu', 
                    padding='same',
-                   kernel_regularizer=regularizers.l2(0.01))(embed2)
+                   kernel_regularizer=regularizers.l2(0.002))(embed2)
     
     #右侧丢失层
     drop2 = Dropout(0.3)(conv2)
@@ -362,56 +425,63 @@ if if_train:
                              padding='same', 
                              strides=2)(drop2)
     
+    dense_2 = Dense(256,
+                    activation='relu',
+                    kernel_regularizer=regularizers.l2(0.002))(pool2)
+    
     #右侧展平层
     #文本的向量将会从这里进行输出
-    out2 = Flatten()(pool2)
+    out2 = Flatten()(dense_2)
     
     #将两个题目的向量做元素相乘运算，从而将其合并为一层
     multiplied = multiply([out1, out2])
+    '''
     
     #全连接层1
-    dense1 = Dense(160, 
+    dense1 = Dense(512, 
                    activation='relu',
-                   kernel_regularizer=regularizers.l2(0.01))(multiplied) 
+                   kernel_regularizer=regularizers.l2(0.002),
+                   kernel_initializer='he_normal')(merge) 
     
     #合并丢失层1
-    drop = Dropout(0.3)(dense1)
+    drop = Dropout(0.5)(dense1)
     
     #全连接层2
     dense2 = Dense(128, 
                    activation='relu',
-                   kernel_regularizer=regularizers.l2(0.01))(drop) 
+                   kernel_regularizer=regularizers.l2(0.002),
+                   kernel_initializer='he_normal')(drop) 
     
     #合并丢失层2
-    drop_2 = Dropout(0.3)(dense2)
+    drop_2 = Dropout(0.5)(dense2)
     
     #全连接层3，输出层，以sigmoid为激活函数，解决二分类问题
     dense2 = Dense(1, 
                    activation='sigmoid')(drop_2)
-    
-    
+       
     #建立函数式模型
     my_model = Model(inputs=[input1, input2], outputs=dense2)
     
     #已弃用的随机梯度优化器
     sgd = SGD(lr=1.0e-2, decay=1.0e-3)
+    rmsprop = RMSprop(lr=0.01)
+    adam = Adam(lr=3e-3, decay=0.01)
     
     #编译。采用rmsprop作为优化器，二分类熵作为损失函数，准确率作为评价值
-    my_model.compile(optimizer='adam', 
+    my_model.compile(optimizer=adam, 
                      loss='binary_crossentropy',
                      metrics=['accuracy'])
     
     #网络结构展示
     my_model.summary()
     print('*****开始训练*****')
-    input()
     
     #训练，有两个输入一个输出，输入值是词汇组成的文本矩阵，输出值是相似度
     #轮回数量由epochs指定，批处理大小为64（最优），验证比例为0.2
     my_model.fit([all_train_left_matrix, all_train_right_matrix], all_train_lab, 
                  verbose = 1, 
                  epochs=epochs,
-                 batch_size=64, 
+                 batch_size=128, 
                  validation_split=0.2, 
                  shuffle=True)
     print('*****训练完成*****')
@@ -434,7 +504,7 @@ else:
     my_model = load_model(load_address)
     print('*****读取模型成功*****')
     
-    my_model.summary();
+    my_model.summary()
     
     #模型评估
     score = my_model.evaluate([all_test_left_matrix, all_test_right_matrix], 
@@ -443,6 +513,7 @@ else:
     print('Test score:', score[0])#测试集中的loss
     print('Test accuracy:', score[1]) #测试集中的准确率
 
+'''
 #构建用于左侧输入的文本向量的神经网络向量化的模型，将会输出深度学习以后的语义向量
 #该向量由展平层的输出提供
 vec_model_1 = Model(inputs=my_model.input[0], 
@@ -476,19 +547,20 @@ for vec_1 in pre_vec:
 #将选定好的题目的相似度列表按照相似度降序进行排序
 for i,List in enumerate(pre_vec_sim):
     List.sort(key=lambda com: com[0], reverse=True)
-    '''
-    if i == 3:
-        print(List)
-    '''
+    
+   # if i == 3:
+    #    print(List)
+    
     #文本打印
     out.write(u'与 %d 号题目最相似的题目为（题号，相似度）:\n' % my_pre[i])
     for i in range(10):
         out.write(u'%d %.8f\n' % (List[i][1], List[i][0]))
     out.write(u'\n')
 
-#测试集由已经训练好的神经网络模型进行预测得到的结果，为概率列表
+#测试集由已经训练好的神经网络模型进行预测得到的结果，为概率列表'''
 label_pro_predict = my_model.predict([all_test_left_matrix, all_test_right_matrix], verbose=1)
-numpy.savetxt(r'8.26/pro_list.txt', label_pro_predict)
+numpy.savetxt(r'pro_list.txt', label_pro_predict)
+
 
 #将概率列表转化为固定的预测结果，以Trehold为截点
 label_predict = []
@@ -528,7 +600,7 @@ plt.ylabel('TRP')
 plt.xlabel('FPR')
 plt.show()
 
-out.close()
+#out.close()
     
 
 
