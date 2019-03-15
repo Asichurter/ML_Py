@@ -7,7 +7,10 @@
 #      3.将W2V表示的浅层词向量作为神经网络深入，得到题目的深层向量表示
 #      4.利用得到的语义向量，计算语义相似度
 #      5.利用标注的测试集，对训练得到的模型进行评估
+from keras.backend.tensorflow_backend import set_session
+import tensorflow as tf
 import os
+import keras
 import numpy
 import re
 import random
@@ -19,10 +22,12 @@ from keras.layers import Input, Dense, Dropout, Flatten, Conv1D, AveragePooling1
 from keras.optimizers import SGD, RMSprop, Adam
 from gensim.models.word2vec import Word2Vec
 from keras.preprocessing.sequence import pad_sequences
-from keras.initializers import RandomNormal
-#import keras.backend.tensorflow_backend as KTF
 
-#os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+set_session(tf.Session(config=config))
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 #题目最大词语数量
 Max_Word = 100
@@ -37,7 +42,7 @@ train_limit = 5000
 test_limit = 5000
 
 #训练轮数
-epochs = 200
+epochs = 300
 
 #标签的概率截点
 Threhold = 0.5
@@ -298,6 +303,7 @@ all_train_right_matrix = pad_sequences(all_train_right_matrix, maxlen=Max_Word, 
 all_test_left_matrix = pad_sequences(all_test_left_matrix, maxlen=Max_Word, padding='post')
 all_test_right_matrix = pad_sequences(all_test_right_matrix, maxlen=Max_Word, padding='post')
 print('*****输入数据处理完成*****')
+print(all_train_left_matrix.shape)
 
 #建立用于输入到神经网络嵌入层的，含有词汇初始化向量权重的矩阵
 #若没有该词汇，则会以0代替
@@ -321,54 +327,74 @@ if if_train:
     embeding = Embedding(vocab_size, 
                        Embed_Size, 
                        input_length=Max_Word, 
-                       weights=[embedding_weights], 
-                       trainable=True,
-                       embeddings_regularizer=regularizers.l1(1e-5))
+                        weights=[embedding_weights], 
+                       trainable=False)
     
     embed1 = embeding(input1)
     embed2 = embeding(input2)
     
     '''
-    lstm = LSTM(16, activation='tanh',
-                kernel_initializer='random_normal',
-                recurrent_initializer='random_normal',
-                kernel_regularizer=regularizers.l2(0.001),
+    lstm = LSTM(128,
                 recurrent_dropout=0.1,
-                dropout=0.2)
+                dropout=0.4)
     
-    lstm1 = lstm(embed1)
-    lstm2 = lstm(embed2)
+    bn = keras.layers.BatchNormalization()
+    
+    lstm1 = bn(lstm(embed1))
+    lstm2 = bn(lstm(embed2))
+    
     '''
     
     dropout_1 = Dropout(0.5)
-    dropout_2 = Dropout(0.5)
+    dropout_2 = Dropout(0.3)
+    dropout_3 = Dropout(0.3)
+    dropout_4 = Dropout(0.3)
+    
     flat = Flatten()
     
-    conv1 = Conv1D(128, 3, 
+    conv1 = Conv1D(128, 5, 
                    activation='tanh', 
                    padding='same',
-                   kernel_regularizer=regularizers.l2(0.002),
+                   kernel_regularizer=regularizers.l2(0.001),
                    kernel_initializer='he_normal')   
     
-    conv2 = Conv1D(128, 3, 
+    conv2 = Conv1D(128, 5, 
                    activation='tanh', 
                    padding='same',
-                   kernel_regularizer=regularizers.l2(0.002),
+                   kernel_regularizer=regularizers.l2(0.001),
                    kernel_initializer='he_normal')
-    
+    conv3 = Conv1D(128, 5, 
+                   activation='tanh', 
+                   padding='same',
+                   kernel_regularizer=regularizers.l2(0.001),
+                   kernel_initializer='he_normal')
+    conv4 = Conv1D(128, 5, 
+                   activation='tanh', 
+                   padding='same',
+                   kernel_regularizer=regularizers.l2(0.001),
+                   kernel_initializer='he_normal')
+
+
     pool1 = AveragePooling1D(3, 
                              padding='same', 
                              strides=2)
     pool2 = AveragePooling1D(3, 
                              padding='same', 
                              strides=2)
+    pool3 = AveragePooling1D(3, 
+                             padding='same', 
+                             strides=2)
+    pool4 = AveragePooling1D(3, 
+                             padding='same', 
+                             strides=2)
     
+
+    out1 = flat(dropout_4(pool4(conv4(dropout_3(pool3(conv3(dropout_2(pool2(conv2(dropout_1(pool1(conv1(embed1)))))))))))))
+    out2 = flat(dropout_4(pool4(conv4(dropout_3(pool3(conv3(dropout_2(pool2(conv2(dropout_1(pool1(conv1(embed2)))))))))))))
     
-    out1 = flat(dropout_2(pool2(conv2(dropout_1(pool1(conv1(embed1)))))))
-    out2 = flat(dropout_2(pool2(conv2(dropout_1(pool1(conv1(embed2)))))))
-    
-    merge = concatenate([out1, out2], axis=-1)
-    
+    #merge = concatenate([lstm1, lstm2], axis=-1)
+    merge = multiply([out1, out2])
+
     '''
     #左侧输入层
     input1 = Input(shape=(Max_Word,))
@@ -437,10 +463,12 @@ if if_train:
     multiplied = multiply([out1, out2])
     '''
     
+
+
     #全连接层1
-    dense1 = Dense(512, 
+    dense1 = Dense(256, 
                    activation='relu',
-                   kernel_regularizer=regularizers.l2(0.002),
+                   kernel_regularizer=regularizers.l2(0.001),
                    kernel_initializer='he_normal')(merge) 
     
     #合并丢失层1
@@ -449,26 +477,33 @@ if if_train:
     #全连接层2
     dense2 = Dense(128, 
                    activation='relu',
-                   kernel_regularizer=regularizers.l2(0.002),
+                   kernel_regularizer=regularizers.l2(0.001),
                    kernel_initializer='he_normal')(drop) 
     
     #合并丢失层2
     drop_2 = Dropout(0.5)(dense2)
     
+    dense3 = Dense(128,
+                    activation='relu',
+                    kernel_regularizer=regularizers.l2(0.001),
+                    kernel_initializer='he_normal')(drop_2)
+    
+    drop_3 = Dropout(0.5)(dense3)
+    
     #全连接层3，输出层，以sigmoid为激活函数，解决二分类问题
-    dense2 = Dense(1, 
-                   activation='sigmoid')(drop_2)
+    dense4 = Dense(1, 
+                   activation='sigmoid')(drop_3)
        
     #建立函数式模型
-    my_model = Model(inputs=[input1, input2], outputs=dense2)
+    my_model = Model(inputs=[input1, input2], outputs=dense4)
     
     #已弃用的随机梯度优化器
-    sgd = SGD(lr=1.0e-2, decay=1.0e-3)
+    sgd = SGD(lr=3.0e-1, decay=1.0e-2, momentum=1e-2, nesterov=True)
     rmsprop = RMSprop(lr=0.01)
-    adam = Adam(lr=3e-3, decay=0.01)
+    adam = Adam(lr=5e-3)
     
     #编译。采用rmsprop作为优化器，二分类熵作为损失函数，准确率作为评价值
-    my_model.compile(optimizer=adam, 
+    my_model.compile(optimizer='adam', 
                      loss='binary_crossentropy',
                      metrics=['accuracy'])
     
@@ -479,7 +514,7 @@ if if_train:
     #训练，有两个输入一个输出，输入值是词汇组成的文本矩阵，输出值是相似度
     #轮回数量由epochs指定，批处理大小为64（最优），验证比例为0.2
     my_model.fit([all_train_left_matrix, all_train_right_matrix], all_train_lab, 
-                 verbose = 1, 
+                 verbose = 1,
                  epochs=epochs,
                  batch_size=128, 
                  validation_split=0.2, 

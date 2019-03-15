@@ -71,8 +71,8 @@ class Logistic_Regression:
               #      self.Weights += self.Learning_Rate*(self.forward(data[0])-self.Labels[data[1]])*gradient
             for data in datas: 
                 try:
-                    #使用梯度下降法更新权重
-                    #注意：梯度下降法的公式只含有梯度和补步长，即W'=W-▽·r，▽是梯度，r是步长，不含有误差项
+                    # 使用梯度下降法更新权重
+                    # 注意：梯度下降法的公式只含有梯度和补步长，即W'=W-▽·r，▽是梯度，r是步长，不含有误差项
                     weight_delta = self.Learning_Rate*gradient
                     self.Weights += weight_delta
                 except OverflowError:
@@ -83,7 +83,7 @@ class Logistic_Regression:
                     return a,b
             all_num = 0.
             correct_num = 0.
-            #计算本轮的正确率
+            # 计算本轮的正确率
             for data in datas:
                 all_num += 1
                 try:
@@ -153,10 +153,10 @@ if __name__ == '__main__':
     aa, bb = model.train(datas, 1000)  
     print('拟合的直线: ', 'y=%f*x+%f'%(aa,bb))
     for i in range(epoch):
-        x = random.uniform(-20,20)
-        y = random.uniform(-20,20)
+        x = random.uniform(-20, 20)
+        y = random.uniform(-20, 20)
         l = 1 if y-a*x-b >= 0 else 0
-        tests.append([[x,y],l])    
+        tests.append([[x, y], l])
     cor_num = 0.
     for dat in tests:
         if model.predict(dat[0]) == dat[1]:

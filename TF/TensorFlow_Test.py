@@ -78,7 +78,6 @@ def train(x, y, test_x, test_y, lr=0.1, steps=500, batch_size=8, decay=0.99, thr
     loss += tf.add_n(tf.get_collection('loss'))
     
     l_r = tf.train.exponential_decay(lr, global_step, x.shape[0]/batch_size, decay, staircase=True)
-    
     train_step = tf.train.AdamOptimizer(l_r).minimize(loss, global_step=global_step)
     
     ones = tf.ones_like(Y)
@@ -110,6 +109,7 @@ def train(x, y, test_x, test_y, lr=0.1, steps=500, batch_size=8, decay=0.99, thr
         plt.show()
         print('最终测试正确率: ', s.run(acc, feed_dict={X:test_x, Y:test_y}))
         print(len(tf.trainable_variables()))
+        
                 
 if __name__ == '__main__':
     datas,labels = get_data(0,0,14,300)

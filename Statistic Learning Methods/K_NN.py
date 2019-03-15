@@ -62,17 +62,17 @@ if __name__ == '__main__':
         return X,Y
     
     data = []
-    data_1 = get_data(-9,-7,10,30)
+    data_1 = get_data(-9,-7,8,30)
     data_1 = [[x,1] for x in data_1]
     data += data_1
-    data_2 = get_data(-1,2,10,30)
+    data_2 = get_data(-1,2,8,30)
     data_2 = [[x,2] for x in data_2]
     data += data_2
-    data_3 = get_data(7,9,10,30)
+    data_3 = get_data(7,9,8,30)
     data_3 = [[x,3] for x in data_3]
     data += data_3
     
-    model = KNN(data,20)
+    model = KNN(data,k=10)
     
     X = random.uniform(-20,20)
     Y = random.uniform(-20,20)
@@ -92,7 +92,7 @@ if __name__ == '__main__':
         plt.plot([X], [Y], 'o', color='blue')
     else:
         print('出错!')
-    plt.plot([X], [Y], 'kx', label='target point')
+    plt.plot([X], [Y], 'cx', label='target point')
     plt.plot(XX, YY, 'k')
     plt.legend()
     plt.show()

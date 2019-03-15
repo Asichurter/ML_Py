@@ -16,13 +16,17 @@ e = tf.train.ExponentialMovingAverage(0.99)
 op = e.apply([a])
 
 res = a+b
-print(e.variables_to_restore())
-saver = tf.train.Saver({'a':a, 'b':b})
+#print(e.variables_to_restore())
+#saver = tf.train.Saver({'a':a, 'b':b})
 init = tf.global_variables_initializer()
 
-with tf.Session() as s:
+'''
+with tf.Session() as s: 
     saver.restore(s, './model')
     print(s.run(res))
+    '''
+print(tf.test.is_gpu_available())
+
 
 
 
