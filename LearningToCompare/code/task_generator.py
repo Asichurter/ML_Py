@@ -130,6 +130,7 @@ class Omniglot(FewShotDataset):
         #transform之后，白点为0.9250，这是1-0.92206/0.08426的结果
         #由于toTensor，因此每一个向量都是28x28的
         if self.transform is not None:
+            print(image)
             image = self.transform(image)
         label = self.labels[idx]
         if self.target_transform is not None:
