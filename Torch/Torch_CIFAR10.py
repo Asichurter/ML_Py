@@ -11,7 +11,6 @@ import torchvision as tv
 import torch.nn.functional as F
 import torchvision.transforms as transforms
 from torchvision.transforms import ToPILImage
-from torch.autograd import Variable
 
 class Net(t.nn.Module):
     def __init__(self):
@@ -57,8 +56,10 @@ net = net.cuda()
 loss_func = nn.CrossEntropyLoss().cuda()
 opt = t.optim.SGD(net.parameters(), lr=1e-3, momentum=0.9)
 
+for name,par in net.named_parameters():
+    print(name, par.size())
 
-
+'''
 for epoch in range(epoches):
     print('epoch', epoch, ': ')
     running_loss = 0.
@@ -95,7 +96,7 @@ for epoch in range(epoches):
         total += labels.size()[0]
         correct += (predict==labels).sum().item()
     print(' after ',epoch+1,'epoches, acc: ',correct/total, '\n')
-
+'''
         
         
         
