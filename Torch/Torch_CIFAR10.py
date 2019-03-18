@@ -43,6 +43,8 @@ classes = ['plane', 'car', 'bird', 'cat',
 
 data_path = r'D:\TSBrowserDownloads'
 
+#normalize是对三个通道channel分别进行归一化的操作
+#由于toTensor以后，每个像素的值的范围为[0,1]，因此减0.5再除0.5以后，范围就成了[-1,1]
 trans = transforms.Compose([transforms.ToTensor(),
                             transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))])
 train_set = tv.datasets.CIFAR10(data_path, train=True, download=True, transform=trans)
@@ -56,8 +58,7 @@ net = net.cuda()
 loss_func = nn.CrossEntropyLoss().cuda()
 opt = t.optim.SGD(net.parameters(), lr=1e-3, momentum=0.9)
 
-for name,par in net.named_parameters():
-    print(name, par.size())
+print(net._parameters)
 
 '''
 for epoch in range(epoches):
@@ -67,7 +68,7 @@ for epoch in range(epoches):
         if i % 500 == 0:
             print('Training, ',i,' epoch:')
         inputs,labels = data
-        inputs,labels = Variable(inputs).cuda(),Variable(labels).cuda()
+        inputs,labels = t.Tensor(inputs, requires_grad=True).cuda(),t.Tensor(labels).cuda()
         
         #因为最终的函数定义为优化器的损失函数，因此使用优化器来进行梯度清空的操作
         opt.zero_grad()
@@ -91,13 +92,14 @@ for epoch in range(epoches):
         if t.cuda.is_available():
             images = images.cuda()
             labels = labels.cuda()
-        output = net(Variable(images))
+        output = net(t.Tensor(images))
         _, predict = t.max(output.data, 1)
         total += labels.size()[0]
         correct += (predict==labels).sum().item()
     print(' after ',epoch+1,'epoches, acc: ',correct/total, '\n')
-'''
-        
+
+t.nn.Module.train()
+'''      
         
         
         
