@@ -10,33 +10,25 @@ from torch.autograd import Variable
 import os
 import visdom
 import numpy as np
+import torch.nn.functional as F
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
-a,b,c = 3,4,5
-x = Variable(t.randn(a,b))
-w11111 = Variable(t.randn(b,c))
-w2 = Variable(t.randn(b,c))
+a = t.tensor([1.,1.], requires_grad=True)
+for i in range(2):
+    b = (a**2).sum()
+    b.backward()
+    print('第', i+1, '次a的梯度: ', a.grad)
+    a.grad.zero_()
 
-z = 10
-y = None
-if z > 0:
-    y = x.mm(w11111)
-else:
-    y = x.mm(w2)
-print(t.mm(x,w11111))
-print(y)
-device = t.cuda.device(0)
-#print(os.environ.keys)
-t.cuda.set_device(0)
+inputs = t.randn(3, 5, requires_grad=True)
+target = t.randint(5, (3,), dtype=t.int64)
+loss = F.cross_entropy(inputs, target)
+print(inputs)
+print(target)
 
-print(t.cuda.is_available())
+aa = t.Tensor([[0.1, -0.1]])
+bb = t.LongTensor([0])
+print(t.nn.CrossEntropyLoss()(aa, bb))
 
-vis = visdom.Visdom()
-xx = t.Tensor(np.linspace(0,10,30))
-yy = t.cos(xx)
-vis.line(X=xx, Y=yy, win='cosx', opts={'title':'cos(x)'})
-vis.images(t.randn((2,3,128,128)), win='image')
 
-a = [1,2,3]
-print(list(map(lambda x: x+1, a)))

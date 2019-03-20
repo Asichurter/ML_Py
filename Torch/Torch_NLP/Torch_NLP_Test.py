@@ -17,6 +17,18 @@ from gensim.models.word2vec import Word2Vec
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
+#题目最大词语数量
+Max_Word = 100
+
+#嵌入层维度
+Embed_Size = 128
+
+#训练轮数
+epochs = 10
+
+#标签的概率截点
+Threhold = 0.5
+
 class Net(t.nn.Module):
     def __init__(self, vocab_size, embed_size, embedding_weights=None):
         super(Net, self).__init__()
@@ -25,7 +37,10 @@ class Net(t.nn.Module):
         self.Conv2 = t.nn.Conv2d(3, 3, 3, padding=1, bias=False)
         self.Conv3 = t.nn.Conv2d(3, 3, 3, padding=1, bias=False)
         self.Dense1 = t.nn.Linear(2*3*5*16, 128)
-        self.Dense2 = t.nn.Linear(128, 1)
+        self.Dense2 = t.nn.Linear(128, 2)
+        
+        #初始化参数
+        #self.initialize()
     
     def forward(self, x1, x2):       
         x1 = self.Embed(x1)
@@ -47,41 +62,17 @@ class Net(t.nn.Module):
         #展平为一维向量
         x = t.cat((x1,x2), dim=0).view(1, -1)
         x = F.relu(self.Dense1(x))
-        x = F.sigmoid(self.Dense2(x))
+        x = self.Dense2(x)
         
         return x
-        
-
-#题目最大词语数量
-Max_Word = 100
-
-#嵌入层维度
-Embed_Size = 128
-
-#最大训练量，Debug用
-train_limit = 5000
-
-#最大测试量，debug用
-test_limit = 5000
-
-#训练轮数
-epochs = 300
-
-#标签的概率截点
-Threhold = 0.5
-
-#模型的保存/加载地址
-save_address = r'my_model_final.h5'
-load_address = r'my_model_final_20181224.h5'
-
-#加载已有模型还是重新训练
-if_train = True
-
-#人工选择的进行语义相似度进行计算的题目
-my_pre = [0, 56, 888, 300, 400]
-
-#文本输入
-out = open(r'sim.txt', 'w', encoding='UTF-8')
+    
+    def initialize(self):
+        for par in self.parameters():
+            t.nn.init.xavier_normal_(par)
+            
+def make_label(prob):
+    return t.Tensor([1-prob, prob])
+     
 
 #用于替换题目中LaTex中的数学关键字
 def characters_substitude(sentence):
@@ -329,6 +320,7 @@ for List in all_test_con:
     all_test_right_matrix.append(seq_right)
     
 all_train_left_matrix = pad_seq(all_train_left_matrix, 100, len(embedding_index))
+all_train_right_matrix = pad_seq(all_train_right_matrix, 100, len(embedding_index))
 
 #建立用于输入到神经网络嵌入层的，含有词汇初始化向量权重的矩阵
 #若没有该词汇，则会以0代替
@@ -345,5 +337,46 @@ embedding_weights = embedding_weights.tolist()
 embedding_weights.append([0 for i in range(Embed_Size)])
 
 net = Net(len(embedding_weights), Embed_Size, t.Tensor(embedding_weights))
-res = net(t.LongTensor(all_train_left_matrix[0]), t.LongTensor(all_train_left_matrix[1]))
-print(res)
+
+net = net.cuda()
+
+opt = t.optim.Adam(net.parameters())
+
+loss_func = t.nn.CrossEntropyLoss()
+
+for name,par in net.named_parameters():
+    print(name, par.requires_grad)
+    
+
+for i in range(epochs):
+    print(i, ' th epoch of training: ')
+    running_loss = 0.
+    epoch = 0
+    
+    for left,right,label in zip(all_train_left_matrix, all_train_right_matrix,all_train_lab):
+        
+        opt.zero_grad()
+        
+        out = net(t.LongTensor(left).cuda(), t.LongTensor(right).cuda())
+        
+        label = t.tensor([label], dtype=t.long, requires_grad=False).cuda()
+        
+        loss = loss_func(out, label).cuda()
+        loss.backward()
+        
+        opt.step()
+        
+        running_loss += loss.data.item()
+        
+        epoch += 1
+        if epoch % 1000 == 0:
+            print('after ', epoch, ', average loss: ', running_loss/(epoch))
+        
+        
+        
+        
+        
+        
+        
+        
+        
