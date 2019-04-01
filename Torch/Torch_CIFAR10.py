@@ -58,9 +58,6 @@ net = net.cuda()
 loss_func = nn.CrossEntropyLoss().cuda()
 opt = t.optim.SGD(net.parameters(), lr=1e-3, momentum=0.9)
 
-print(net._parameters)
-
-'''
 for epoch in range(epoches):
     print('epoch', epoch, ': ')
     running_loss = 0.
@@ -68,8 +65,12 @@ for epoch in range(epoches):
         if i % 500 == 0:
             print('Training, ',i,' epoch:')
         inputs,labels = data
-        inputs,labels = t.Tensor(inputs, requires_grad=True).cuda(),t.Tensor(labels).cuda()
+        print(inputs.shape)
+        print(labels.shape)
+        inputs,labels = t.Tensor(inputs).cuda(),t.Tensor(labels, dtype=t.float).cuda()
+
         
+        break
         #因为最终的函数定义为优化器的损失函数，因此使用优化器来进行梯度清空的操作
         opt.zero_grad()
         
@@ -80,7 +81,8 @@ for epoch in range(epoches):
         loss.backward()
         
         opt.step()
-        running_loss += loss.data.item()        
+        running_loss += loss.data.item()   
+    break
         
     correct = 0.
     total = 0.
@@ -98,8 +100,7 @@ for epoch in range(epoches):
         correct += (predict==labels).sum().item()
     print(' after ',epoch+1,'epoches, acc: ',correct/total, '\n')
 
-t.nn.Module.train()
-'''      
+t.nn.Module.train()   
         
         
         

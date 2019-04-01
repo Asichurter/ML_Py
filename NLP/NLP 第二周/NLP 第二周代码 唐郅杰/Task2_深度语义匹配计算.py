@@ -357,22 +357,26 @@ if if_train:
                    padding='same',
                    kernel_regularizer=regularizers.l2(0.001),
                    kernel_initializer='he_normal')   
+
     
     conv2 = Conv1D(128, 5, 
                    activation='tanh', 
                    padding='same',
                    kernel_regularizer=regularizers.l2(0.001),
                    kernel_initializer='he_normal')
+    
     conv3 = Conv1D(128, 5, 
                    activation='tanh', 
                    padding='same',
                    kernel_regularizer=regularizers.l2(0.001),
                    kernel_initializer='he_normal')
+
     conv4 = Conv1D(128, 5, 
                    activation='tanh', 
                    padding='same',
                    kernel_regularizer=regularizers.l2(0.001),
                    kernel_initializer='he_normal')
+    
 
 
     pool1 = AveragePooling1D(3, 
@@ -394,6 +398,7 @@ if if_train:
     
     #merge = concatenate([lstm1, lstm2], axis=-1)
     merge = multiply([out1, out2])
+    
 
     '''
     #左侧输入层
@@ -463,8 +468,6 @@ if if_train:
     multiplied = multiply([out1, out2])
     '''
     
-
-
     #全连接层1
     dense1 = Dense(256, 
                    activation='relu',
@@ -510,6 +513,12 @@ if if_train:
     #网络结构展示
     my_model.summary()
     print('*****开始训练*****')
+    print('conv1.output_shape: ', conv1.output_shape)
+    print('conv2.output_shape: ', conv2.output_shape)
+    print('conv3.output_shape: ', conv3.output_shape)
+    print('conv4.output_shape: ', conv4.output_shape)
+    print('out1.output_shape: ', out1.output_shape)
+    print('merge.output_shape: ', merge.output_shape)
     
     #训练，有两个输入一个输出，输入值是词汇组成的文本矩阵，输出值是相似度
     #轮回数量由epochs指定，批处理大小为64（最优），验证比例为0.2
