@@ -139,7 +139,10 @@ def mix_samples(mal_base=MALWARE_BASE, num=500, split=0.5, seed=1):
     return data,label     
 
 def centralize_data(data):
-    pass
+    mean = np.mean(data, axis=0)
+    std = np.std(data, axis=0)
+    normalize_func = lambda x: (x-mean)/std
+    data = np.apply_along_axis(normalize_func, axis=1, arr=data)
         
 if __name__ == '__main__':
     path = get_benign_exe_abspath()
@@ -154,7 +157,7 @@ if __name__ == '__main__':
     #np.save('data_0504.npy', data)
     #np.save('label_0504.npy', label)
     
-    data = np.load(DATA_SAVE_NAME)
+    data = centralize_data(np.load(DATA_SAVE_NAME))
     label = np.load(LABEL_SAVE_NAME)
     
     pca = PCA(n_components=2)
@@ -166,13 +169,15 @@ if __name__ == '__main__':
     plt.legend()
     plt.show()
     
-    #a = np.array([[1,30,6],[2,30,2],[1,90,6]])
-    #mean = np.mean(a, axis=0)
+    '''
+    a = np.array([[1,30,6],[2,30,2],[1,90,6]])
+    mean = np.mean(a, axis=0)
+    std = np.std(a, axis=0)
+    m = np.max(a, axis=0)
     
-    #func = lambda x: x-mean
-    #b = np.apply_along_axis(func, axis=1, arr=a)
-
-    
+    func = lambda x: (x-mean)/std
+    b = np.apply_along_axis(func, axis=1, arr=a)
+    '''
     
     '''
     train_data = data[:TEST_NUM*DATA_SPLIT]
