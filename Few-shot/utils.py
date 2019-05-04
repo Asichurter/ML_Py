@@ -11,6 +11,9 @@ from extract import extract_infos
 import pandas as pd
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
+import sklearn 
+from sklearn.neighbors import KNeighborsClassifier as KNN
+from sklearn.svm import SVC
 
 HOME = r'C:/Users/10904/Desktop/images2/'
 BASE = r'D:/pe/trojan0/'
@@ -138,11 +141,14 @@ def mix_samples(mal_base=MALWARE_BASE, num=500, split=0.5, seed=1):
     
     return data,label     
 
-def centralize_data(data):
+#将数据标准化，避免各维度上数据差异过大
+def normalize_data(data):
     mean = np.mean(data, axis=0)
     std = np.std(data, axis=0)
     normalize_func = lambda x: (x-mean)/std
     data = np.apply_along_axis(normalize_func, axis=1, arr=data)
+    #由于最后一个维度上，数据均为0，因此会出现除0错误而出现nan，因此需要将nan转为0后返回
+    return np.nan_to_num(data)
         
 if __name__ == '__main__':
     path = get_benign_exe_abspath()
@@ -157,17 +163,46 @@ if __name__ == '__main__':
     #np.save('data_0504.npy', data)
     #np.save('label_0504.npy', label)
     
-    data = centralize_data(np.load(DATA_SAVE_NAME))
+    data = normalize_data(np.load(DATA_SAVE_NAME))
+    #data = np.load(DATA_SAVE_NAME)
     label = np.load(LABEL_SAVE_NAME)
     
     pca = PCA(n_components=2)
     data_trans = pca.fit_transform(data)
     
-    plt.plot([x[0] for x,l in zip(data_trans,label) if l==1], [x[1] for x,l in zip(data_trans,label) if l==1], 'bo', label='malware')
-    plt.plot([x[0] for x,l in zip(data_trans,label) if l==0], [x[1] for x,l in zip(data_trans,label) if l==0], 'ro', label='benign')
+    train_data = data_trans[:int(TEST_NUM*DATA_SPLIT)]
+    test_data = data_trans[int(TEST_NUM*DATA_SPLIT):]
+    
+    train_label = label[:int(TEST_NUM*DATA_SPLIT)]
+    test_label = label[int(TEST_NUM*DATA_SPLIT):]
+    
+    knn = KNN(n_neighbors=1)
+    knn.fit(train_data, train_label)
+    
+    svm = SVC(gamma='auto')
+    svm.fit(train_data, train_label)
+    
+    #predict = svm.predict(test_data)
+    
+    
+    predict = knn.predict(test_data)
+    
+    
+    acc = np.sum(predict==test_label)/len(predict)
+    print(acc)
+    
+    plt.figure(figsize=(20,20))
+    plt.plot([x[0] for x,l in zip(train_data,train_label) if l==1], [x[1] for x,l in zip(train_data,train_label) if l==1], 'bo', label='train_malware')
+    plt.plot([x[0] for x,l in zip(train_data,train_label) if l==0], [x[1] for x,l in zip(train_data,train_label) if l==0], 'ro', label='train_benign')
+    plt.plot([x[0] for x,l,pl in zip(test_data,test_label,predict) if l==1 and pl==1], [x[1] for x,l,pl in zip(test_data,test_label,predict) if l==1 and pl==1], 'bx', label='malware_right')
+    plt.plot([x[0] for x,l,pl in zip(test_data,test_label,predict) if l==0 and pl==0], [x[1] for x,l,pl in zip(test_data,test_label,predict) if l==0 and pl==0], 'rx', label='benign_right')
+    plt.plot([x[0] for x,l,pl in zip(test_data,test_label,predict) if l==1 and pl==0], [x[1] for x,l,pl in zip(test_data,test_label,predict) if l==1 and pl==0], 'kx', label='malware_wrong')
+    plt.plot([x[0] for x,l,pl in zip(test_data,test_label,predict) if l==0 and pl==1], [x[1] for x,l,pl in zip(test_data,test_label,predict) if l==0 and pl==1], 'ko', label='benign_wrong')
     
     plt.legend()
     plt.show()
+    
+    
     
     '''
     a = np.array([[1,30,6],[2,30,2],[1,90,6]])
@@ -179,13 +214,7 @@ if __name__ == '__main__':
     b = np.apply_along_axis(func, axis=1, arr=a)
     '''
     
-    '''
-    train_data = data[:TEST_NUM*DATA_SPLIT]
-    test_data = data[TEST_NUM*DATA_SPLIT]
-    
-    train_label = label[:TEST_NUM*DATA_SPLIT]
-    test_label = label[TEST_NUM*DATA_SPLIT]
-    '''
+
     
     
 '''
