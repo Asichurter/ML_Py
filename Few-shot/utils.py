@@ -8,25 +8,19 @@ import numpy as np
 import PIL.Image as Image 
 import os
 from extract import extract_infos
-import pandas as pd
-from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
-import sklearn 
-from sklearn.neighbors import KNeighborsClassifier as KNN
-from sklearn.svm import SVC
+#import pandas as pd
 
-HOME = r'C:/Users/10904/Desktop/images2/'
+HOME = r'C:/Users/10904/Desktop/'
 BASE = r'D:/pe/trojan0/'
 PATH = [r'/DoS.Win32.Adonai.01', r'/DoS.Win32.Agent.m']
 EXES = ['exe', 'dll', 'ocx', 'sys', 'com']
 BENIGN_BASE = r'C:/Windows/'
 MALWARE_BASE = r'D:/pe/'
 TEST_CHILD_DIR = ['backdoor1/', 'net-worm/']
-TEST_NUM = 1000
 SIZE_RANGE = [15, 3000]
 DATA_SAVE_NAME = r'data_0504.npy'
 LABEL_SAVE_NAME = r'label_0504.npy'
-DATA_SPLIT = 0.8
+
 
 WIDTH = 256
 WIDTH_SIZE = 10
@@ -35,44 +29,66 @@ UNIT = 1/25
 #base:目标文件或者目标所在的文件夹
 #destination:转换后存储的文件夹
 #mode:转换的模式：单个文件还是该文件夹下所有的文件
-def convert_to_images(base, destination=HOME, mode='file', num_constrain=200):
+#method:转换的方法，是否要标准化
+#padding:是否填充0而不拉伸图像
+def convert_to_images(base, destination=HOME, mode='file', method='normal',padding=True ,num_constrain=200):
+    assert method in ['plain','normal'],'选择的转换算法不在预设中！'
+    assert mode in ['file', 'dir'], '转换的对象类型不在预设中！'
+    #健壮性处理
     if destination[-1] != '/':
         destination += '/'
-    if mode == 'dir':
+    if type(base) is not str:
+        #assert type(base) is Generator, '良性软件生成器输入不是一个可迭代对象！'
+        for i in range(num_constrain):
+            print(i)
+            benign_path = next(base)[:-1]
+            benign_name = benign_path.split('/')[-1]
+            im = convert(benign_path, method, padding)
+            im.save(destination+benign_name+'.jpg', 'JPEG')
+        return
+    elif mode == 'dir':
         if not os.path.isdir(base):
             raise Exception(base + ' is not a director!\n')
         files = os.listdir(base)
         for i,one in enumerate(files):
-            if i > num_constrain:
+            if num_constrain is not None and i > num_constrain :
                 break
             else:
                 print(i)
-            file = open(base+one, "rb")
-            image = np.fromfile(file, dtype=np.byte)
-            #将不足宽度大小的剩余长度的像素点都过滤掉
-            if image.shape[0]%WIDTH != 0:
-                image = image[:-(image.shape[0]%WIDTH)]
-            #print(image.shape)
-            image = image.reshape((-1, WIDTH))
-            image = np.uint8(image)
-            im = Image.fromarray(image)
+            im = convert(base+one, method, padding)
             im.save(destination+one+'.jpg', 'JPEG')
-            file.close()
             
     elif mode == 'file':
         if os.path.isdir(base):
             raise Exception(base + ' is indeed a directory!\n')
-        file = open(base, 'rb')
-        image = np.fromfile(file, dtype=np.byte)
+        im = convert(base, method, padding)
+        name = base.split('/')[-1]
+        im.save(destination+name+'.jpg', 'JPEG')
+
+#单个图像的转换函数，返回Image对象        
+def convert(path, method, padding):
+    file = open(path, "rb")
+    image = np.fromfile(file, dtype=np.byte)
+    im = None
+    if method == 'plain':
+        #将不足宽度大小的剩余长度的像素点都过滤掉
         if image.shape[0]%WIDTH != 0:
             image = image[:-(image.shape[0]%WIDTH)]
         #print(image.shape)
         image = image.reshape((-1, WIDTH))
         image = np.uint8(image)
         im = Image.fromarray(image)
-        im.save(destination+one+'.jpg', 'JPEG')
-        file.close()
-        
+    else:
+        crop_w = int(image.shape[0]**0.5)
+        image = image[:crop_w**2]
+        image = image.reshape((crop_w, crop_w))
+        image = np.uint8(image)
+        if padding and crop_w < WIDTH:
+            image = np.pad(image, (WIDTH-crop_w), 'constant', constant_values=(0))
+        im = Image.fromarray(image)
+        im = im.resize((WIDTH,WIDTH), Image.ANTIALIAS)
+    file.close()
+    return im
         
 #检查一个地址的文件扩展名是否是可执行文件
 def check_if_executable(path, size_thre=SIZE_RANGE):
@@ -96,37 +112,49 @@ def get_benign_exe_abspath(base=BENIGN_BASE):
         if check_if_executable(base):
             yield base
 
-def mix_samples(mal_base=MALWARE_BASE, num=500, split=0.5, seed=1):
-    my_num = 0
+#读取pe文件的特征同时向量化，将良性文件和恶性文件混合返回
+def mix_samples(mal_base=MALWARE_BASE, each_num=100, split=0.5, seed=2, target_list=None):
+    #old_num = 0
+    #new_num = 0
     data = []
     label = []
+    #获得良性文件的迭代器
     benign =  get_benign_exe_abspath()
-    for mal_name in os.listdir(str(mal_base+TEST_CHILD_DIR[0])):
-        print('A: ', my_num)
-        pe_data = extract_infos(mal_base+TEST_CHILD_DIR[0]+mal_name)
-        if pe_data is None:
-            continue
-        data.append(pe_data)
-        label.append(1)
-        my_num += 1
-        if my_num == num:
-            break
-    my_num = 0
-    for mal_name in os.listdir(mal_base+TEST_CHILD_DIR[1]):
-        print('B: ', my_num)
-        pe_data = extract_infos(mal_base+TEST_CHILD_DIR[1]+mal_name)
-        if pe_data is None:
-            continue
-        data.append(pe_data)
-        label.append(1)
-        my_num += 1
-        if my_num == num:
-            break
-    for i in range(my_num):
+    if target_list is None or type(target_list) == list:
+        for ex_i,mal_type in enumerate(os.listdir(mal_base) if target_list is None else target_list):
+            if mal_type != 'aworm':
+                for in_i,mal_name in enumerate(os.listdir(str(mal_base+mal_type))):
+                    print(ex_i,' ',mal_type,' : ', in_i)
+                    pe_data = extract_infos(mal_base+mal_type+'/'+mal_name)
+                    if pe_data is None:
+                        continue
+                    data.append(pe_data)
+                    label.append(1)
+                    if in_i >= each_num-1:
+                        break
+            else:
+                for child_dir in os.listdir(str(mal_base+mal_type)):
+                    for in_i,mal_name in enumerate(os.listdir(str(mal_base+mal_type+'/'+child_dir))):
+                        print(ex_i,' ',child_dir,' : ', in_i)
+                        pe_data = extract_infos(mal_base+mal_type+'/'+child_dir+'/'+mal_name)
+                        if pe_data is None:
+                            continue
+                        data.append(pe_data)
+                        label.append(1)
+                        if in_i >= (each_num-1)/2:
+                            break
+    else:
+        raise Exception('待选列表不是None或者list而是一个非法类型: ', str(type(target_list)))            
+    mal_length = len(data)
+    for i in range(mal_length):
         try:
-            print('C: ', i)
+            print('benign: ', i)
+            #过滤吊最后的斜杠字符
             benign_base = next(benign)[:-1]
-            data.append(extract_infos(benign_base))
+            pe_data = extract_infos(benign_base)
+            if pe_data is None:
+                continue
+            data.append(pe_data)
             label.append(0)
         except StopIteration:
             raise Exception('良性pe文件的数量不足')
@@ -134,6 +162,8 @@ def mix_samples(mal_base=MALWARE_BASE, num=500, split=0.5, seed=1):
     data = np.array(data)
     label = np.array(label)
     
+    #使用相同的种子来打乱数据和标签才能保证结果正确
+    assert len(data)==len(label), '数据和标签数量不一致!'
     np.random.seed(seed)
     data = np.random.permutation(data)
     np.random.seed(seed)
@@ -149,6 +179,16 @@ def normalize_data(data):
     data = np.apply_along_axis(normalize_func, axis=1, arr=data)
     #由于最后一个维度上，数据均为0，因此会出现除0错误而出现nan，因此需要将nan转为0后返回
     return np.nan_to_num(data)
+
+#调用混合数据方法生成数据后保存至文件
+def collect_save_data(normalize=True, num=100, seed=2):
+    data,label = mix_samples(each_num=num, seed=seed)
+    np.save('raw_'+DATA_SAVE_NAME, data)
+    print('First saving successfully done!')
+    if normalize:
+        data = normalize_data(data)
+        np.save(DATA_SAVE_NAME, data)
+        np.save(LABEL_SAVE_NAME, label)
         
 if __name__ == '__main__':
     path = get_benign_exe_abspath()
@@ -158,75 +198,10 @@ if __name__ == '__main__':
         #print(os.path.getsize(p[:-1])/1024)
         #print(p+'\n')
     #print(check_if_executable(r'C:/Windows/System32/1029/VsGraphicsResources.dll/'))
-    
-    #data,label = mix_samples()
-    #np.save('data_0504.npy', data)
-    #np.save('label_0504.npy', label)
-    
-    data = normalize_data(np.load(DATA_SAVE_NAME))
-    #data = np.load(DATA_SAVE_NAME)
-    label = np.load(LABEL_SAVE_NAME)
-    
-    pca = PCA(n_components=2)
-    data_trans = pca.fit_transform(data)
-    
-    train_data = data_trans[:int(TEST_NUM*DATA_SPLIT)]
-    test_data = data_trans[int(TEST_NUM*DATA_SPLIT):]
-    
-    train_label = label[:int(TEST_NUM*DATA_SPLIT)]
-    test_label = label[int(TEST_NUM*DATA_SPLIT):]
-    
-    knn = KNN(n_neighbors=1)
-    knn.fit(train_data, train_label)
-    
-    svm = SVC(gamma='auto')
-    svm.fit(train_data, train_label)
-    
-    #predict = svm.predict(test_data)
-    
-    
-    predict = knn.predict(test_data)
-    
-    
-    acc = np.sum(predict==test_label)/len(predict)
-    print(acc)
-    
-    plt.figure(figsize=(20,20))
-    plt.plot([x[0] for x,l in zip(train_data,train_label) if l==1], [x[1] for x,l in zip(train_data,train_label) if l==1], 'bo', label='train_malware')
-    plt.plot([x[0] for x,l in zip(train_data,train_label) if l==0], [x[1] for x,l in zip(train_data,train_label) if l==0], 'ro', label='train_benign')
-    plt.plot([x[0] for x,l,pl in zip(test_data,test_label,predict) if l==1 and pl==1], [x[1] for x,l,pl in zip(test_data,test_label,predict) if l==1 and pl==1], 'bx', label='malware_right')
-    plt.plot([x[0] for x,l,pl in zip(test_data,test_label,predict) if l==0 and pl==0], [x[1] for x,l,pl in zip(test_data,test_label,predict) if l==0 and pl==0], 'rx', label='benign_right')
-    plt.plot([x[0] for x,l,pl in zip(test_data,test_label,predict) if l==1 and pl==0], [x[1] for x,l,pl in zip(test_data,test_label,predict) if l==1 and pl==0], 'kx', label='malware_wrong')
-    plt.plot([x[0] for x,l,pl in zip(test_data,test_label,predict) if l==0 and pl==1], [x[1] for x,l,pl in zip(test_data,test_label,predict) if l==0 and pl==1], 'ko', label='benign_wrong')
-    
-    plt.legend()
-    plt.show()
-    
-    
-    
     '''
-    a = np.array([[1,30,6],[2,30,2],[1,90,6]])
-    mean = np.mean(a, axis=0)
-    std = np.std(a, axis=0)
-    m = np.max(a, axis=0)
-    
-    func = lambda x: (x-mean)/std
-    b = np.apply_along_axis(func, axis=1, arr=a)
+    benign = get_benign_exe_abspath()
+    convert_to_images(benign,destination='D:/peimages/test for cnn/padding/benign/',
+                      mode='dir',padding=True,num_constrain=500)
+
     '''
-    
-
-    
-    
-'''
-hight_size = image.shape[0]/WIDTH
-#plt.figure(figsize=(image.shape[0]*UNIT,256*UNIT))
-plt.gray()
-plt.imshow(image)
-
-plt.axis('off')
-plt.xticks([])
-plt.yticks([])
-plt.savefig(r'C:/Users/10904/Desktop/111111.png', dpi=100)
-'''
-
 

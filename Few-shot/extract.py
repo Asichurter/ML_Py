@@ -191,25 +191,25 @@ def extract_infos(fpath, return_type='list'):
     res[COLUMNS[i]] = len(pe.sections)
     i+=1
     entropy = list(map(lambda x:x.get_entropy(), pe.sections))
-    res[COLUMNS[i]] = sum(entropy)/float(len(entropy))
+    res[COLUMNS[i]] = sum(entropy)/float(len(entropy)) if len(entropy) != 0 else 0
     i+=1
-    res[COLUMNS[i]] = min(entropy)
+    res[COLUMNS[i]] = min(entropy) if len(entropy) != 0 else 0
     i+=1
-    res[COLUMNS[i]] = max(entropy)
+    res[COLUMNS[i]] = max(entropy)if len(entropy) != 0 else 0
     i+=1
     raw_sizes = list(map(lambda x:x.SizeOfRawData, pe.sections))
-    res[COLUMNS[i]] = sum(raw_sizes)/float(len(raw_sizes))
+    res[COLUMNS[i]] = sum(raw_sizes)/float(len(raw_sizes)) if len(raw_sizes) != 0 else 0
     i+=1
-    res[COLUMNS[i]] = min(raw_sizes)
+    res[COLUMNS[i]] = min(raw_sizes) if len(raw_sizes) != 0 else 0
     i+=1
-    res[COLUMNS[i]] = max(raw_sizes)
+    res[COLUMNS[i]] = max(raw_sizes) if len(raw_sizes) != 0 else 0
     i+=1
     virtual_sizes = list(map(lambda x:x.Misc_VirtualSize, pe.sections))
-    res[COLUMNS[i]] = sum(virtual_sizes)/float(len(virtual_sizes))
+    res[COLUMNS[i]] = sum(virtual_sizes)/float(len(virtual_sizes)) if len(virtual_sizes) != 0 else 0
     i+=1
-    res[COLUMNS[i]] = min(virtual_sizes)
+    res[COLUMNS[i]] = min(virtual_sizes) if len(virtual_sizes) != 0 else 0
     i+=1
-    res[COLUMNS[i]] = max(virtual_sizes)
+    res[COLUMNS[i]] = max(virtual_sizes) if len(virtual_sizes) != 0 else 0
     i+=1
     #Imports
     try:
@@ -241,18 +241,18 @@ def extract_infos(fpath, return_type='list'):
     i+=1
     if len(resources)> 0:
         entropy = list(map(lambda x:x[0], resources))
-        res[COLUMNS[i]] = sum(entropy)/float(len(entropy))
+        res[COLUMNS[i]] = sum(entropy)/float(len(entropy)) if len(entropy) != 0 else 0
         i+=1
-        res[COLUMNS[i]] = min(entropy)
+        res[COLUMNS[i]] = min(entropy) if len(entropy) != 0 else 0
         i+=1
-        res[COLUMNS[i]] = max(entropy)
+        res[COLUMNS[i]] = max(entropy) if len(entropy) != 0 else 0
         i+=1
         sizes = list(map(lambda x:x[1], resources))
-        res[COLUMNS[i]] = sum(sizes)/float(len(sizes))
+        res[COLUMNS[i]] = sum(sizes)/float(len(sizes)) if len(sizes) != 0 else 0
         i+=1
-        res[COLUMNS[i]] = min(sizes)
+        res[COLUMNS[i]] = min(sizes) if len(sizes) != 0 else 0
         i+=1
-        res[COLUMNS[i]] = max(sizes)
+        res[COLUMNS[i]] = max(sizes) if len(sizes) != 0 else 0
         i+=1
     else:
         res[COLUMNS[i]] = 0
