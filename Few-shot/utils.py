@@ -26,12 +26,15 @@ WIDTH = 256
 WIDTH_SIZE = 10
 UNIT = 1/25
 
-#base:目标文件或者目标所在的文件夹
-#destination:转换后存储的文件夹
-#mode:转换的模式：单个文件还是该文件夹下所有的文件
-#method:转换的方法，是否要标准化
-#padding:是否填充0而不拉伸图像
-def convert_to_images(base, destination=HOME, mode='file', method='normal',padding=True ,num_constrain=200):
+
+def convert_to_images(base, destination=HOME, mode='file', method='normal',padding=True,num_constrain=200):
+    '''
+    base:目标文件或者目标所在的文件夹\n
+    destination:转换后存储的文件夹\n
+    mode:转换的模式：单个文件还是该文件夹下所有的文件\n
+    method:转换的方法，是否要标准化\n
+    padding:是否填充0而不拉伸图像\n
+    '''
     assert method in ['plain','normal'],'选择的转换算法不在预设中！'
     assert mode in ['file', 'dir'], '转换的对象类型不在预设中！'
     #健壮性处理
@@ -171,9 +174,11 @@ def mix_samples(mal_base=MALWARE_BASE, each_num=100, split=0.5, seed=2, target_l
     
     return data,label     
 
-#将数据标准化，避免各维度上数据差异过大
+
 def normalize_data(data):
+    '''将数据标准化，避免各维度上数据差异过大'''
     mean = np.mean(data, axis=0)
+
     std = np.std(data, axis=0)
     normalize_func = lambda x: (x-mean)/std
     data = np.apply_along_axis(normalize_func, axis=1, arr=data)
@@ -195,6 +200,7 @@ if __name__ == '__main__':
     for i,p in enumerate(path):
         if i >= 10:
             break
+        convert_to_images()
         #print(os.path.getsize(p[:-1])/1024)
         #print(p+'\n')
     #print(check_if_executable(r'C:/Windows/System32/1029/VsGraphicsResources.dll/'))
