@@ -8,6 +8,8 @@ import numpy as np
 import PIL.Image as Image 
 import os
 from extract import extract_infos
+import random
+import shutil
 #import pandas as pd
 
 HOME = r'C:/Users/10904/Desktop/'
@@ -26,6 +28,9 @@ WIDTH = 256
 WIDTH_SIZE = 10
 UNIT = 1/25
 
+next_times = 0
+return_times = 0
+
 
 def convert_to_images(base, destination=HOME, mode='file', method='normal',padding=True,num_constrain=200):
     '''
@@ -42,12 +47,20 @@ def convert_to_images(base, destination=HOME, mode='file', method='normal',paddi
         destination += '/'
     if type(base) is not str:
         #assert type(base) is Generator, '良性软件生成器输入不是一个可迭代对象！'
-        for i in range(num_constrain):
-            print(i)
-            benign_path = next(base)[:-1]
+        num = 0
+        while num < num_constrain:
+            try:
+                benign_path = next(base)[:-1]
+            except PermissionError:
+                continue
             benign_name = benign_path.split('/')[-1]
+            print(num)
+            #为了不在相同名字的文件下重复覆盖来无意义增加num，添加时判断是否同名者已经存在
+            if os.path.exists(str(destination+benign_name+'.jpg')):
+                continue
             im = convert(benign_path, method, padding)
             im.save(destination+benign_name+'.jpg', 'JPEG')
+            num+=1
         return
     elif mode == 'dir':
         if not os.path.isdir(base):
@@ -68,8 +81,14 @@ def convert_to_images(base, destination=HOME, mode='file', method='normal',paddi
         name = base.split('/')[-1]
         im.save(destination+name+'.jpg', 'JPEG')
 
-#单个图像的转换函数，返回Image对象        
+#
 def convert(path, method, padding):
+    '''
+    单个图像的转换函数，返回Image对象\n
+    path:文件的路径\n
+    method:使用的转换方式，plain:256宽度，长度任意 normal:先正方形，再转为256x256
+    padding:对于normal方式，不足256时是否填充0        
+    '''
     file = open(path, "rb")
     image = np.fromfile(file, dtype=np.byte)
     im = None
@@ -194,8 +213,68 @@ def collect_save_data(normalize=True, num=100, seed=2):
         data = normalize_data(data)
         np.save(DATA_SAVE_NAME, data)
         np.save(LABEL_SAVE_NAME, label)
-        
+
+#
+def check_continuing_decrease(history, window=3):
+    '''
+    用于检测提前终止的条件\n
+    history:历史记录的列表\n
+    window:检测的窗口大小，越大代表检测越长的序列\n
+    '''
+    if len(history) <= window:
+        return False
+    decreasing = True
+    for i in range(window):
+        decreasing ^= (history[-(i+1)]<history[-(i+2)])
+    return decreasing
+
+def create_malware_images(dest=r'D:/peimages/validate/', base=r'D:/pe/', num_per_class=80, deprecated=['aworm']):
+    '''
+    从每个恶意代码类中随机抽取一定量的样本转为图片放入指定文件夹中\n
+    dest:目标文件夹\n
+    base:恶意代码文件夹\n
+    num_per_class:每个类挑选的数量。不足该数量时会取总数量一半\n
+    deprecated:不选取的类，默认为蠕虫，因为该类型的文件夹结构不同于其他类型\n
+    '''
+    if base[-1] != '/':
+        base += '/'
+    num = 0
+    for child in os.listdir(base):
+        if child in deprecated:
+            continue
+        child_columns = os.listdir(base+child)
+        size = num_per_class if len(child_columns) > num_per_class else int(len(child_columns)/2)
+        samples = random.sample(child_columns, size)
+        for sample in samples:
+            path = base+child+'/'+sample
+            convert_to_images(path, destination=dest, mode='file',
+                              padding=False)
+            num += 1
+            print(num)
+            
+def split_datas(src=r'D:/peimages/test for cnn/no padding/malware/', dest=r'D:/peimages/validate/malware/', ratio=0.2):
+    '''
+    将生成的样本按比例随机抽样分割，并且移动到指定文件夹下，用于训练集和验证集的制作
+    src:源文件夹
+    dest:目标文件夹
+    ratio:分割比例
+    '''
+    All = os.listdir(src)
+    size = int(len(All)*ratio)
+    samples_names = random.sample(All, size)
+    num = 0
+    for item in All:
+        if item in samples_names:
+            num += 1
+            path = src+item
+            shutil.move(path, dest)
+            print(num)
+    
+            
 if __name__ == '__main__':
+    next_times = 0
+    return_times = 0
+    '''
     path = get_benign_exe_abspath()
     for i,p in enumerate(path):
         if i >= 10:
@@ -205,9 +284,10 @@ if __name__ == '__main__':
         #print(p+'\n')
     #print(check_if_executable(r'C:/Windows/System32/1029/VsGraphicsResources.dll/'))
     '''
-    benign = get_benign_exe_abspath()
-    convert_to_images(benign,destination='D:/peimages/test for cnn/padding/benign/',
-                      mode='dir',padding=True,num_constrain=500)
+    #benign = get_benign_exe_abspath()
+    #convert_to_images(benign,destination='D:/peimages/test for cnn/no padding/benign/',
+    #                  mode='dir',padding=False,num_constrain=1000)
+    
 
-    '''
+    
 
