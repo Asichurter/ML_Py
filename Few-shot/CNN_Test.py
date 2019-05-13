@@ -66,6 +66,7 @@ criteria = t.nn.BCELoss()
 scheduler = ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=0, verbose=True, min_lr=1e-5)
 #criteria = t.nn.CrossEntropyLoss()
 num = 0
+best_val_loss = 0.
 for i in range(MAX_ITER):
     print(i, ' th')
     a = 0
@@ -121,6 +122,12 @@ for i in range(MAX_ITER):
     val_loss_history.append(val_loss)
     print('val accL: ', val_c/val_a)
     val_acc_history.append(val_c/val_a)
+    
+    if len(val_loss_history)==1 or val_loss < best_val_loss:
+        best_val_loss = val_loss
+        t.save(resnet, 'datas/best_loss_model.h5')
+        print('save model at epoch %d'%i)
+    
     num += 1
     #使用学习率调节器来随验证损失来调整学习率
     scheduler.step(val_loss)
