@@ -31,6 +31,34 @@ def get_pretrained_resnet():
             parameters.append(par)
     return resnet,parameters
 
+def validate(model, dataloader, criteria):
+    '''
+    使用指定的dataloader验证模型\n
+    model:训练的模型\n
+    dataloader:验证的数据加载器\n
+    criteria:损失函数\n
+    '''
+    val_a = 0
+    val_c = 0
+    val_loss = 0.
+    #将模型调整为测试状态
+    model.eval()
+    for data,label in dataloader:
+        data = data.cuda()
+        out = model(data)
+        
+        #同训练阶段一样
+        labels = [[1,0] if L==0 else [0,1] for L in label]
+        labels = t.FloatTensor(labels).cuda()
+        
+        loss = criteria(out, labels)
+        val_loss += loss.data.item()
+        pre_label = t.LongTensor([0 if x[0]>=x[1] else 1 for x in out])
+        val_a += pre_label.shape[0]
+        val_c += (pre_label==label).sum().item()
+    return val_c/val_a,val_loss
+
+'''
 #最大迭代次数    
 MAX_ITER = 15
 #记录历史的训练和验证数据
@@ -99,29 +127,12 @@ for i in range(MAX_ITER):
     train_loss_history.append(Loss)
     print('train acc: ', c/a)
     train_acc_history.append(c/a)
-    val_a = 0
-    val_c = 0
-    val_loss = 0.
-    #将模型调整为测试状态
-    resnet.eval()
-    for data,label in test_loader:
-        data = data.cuda()
-        out = resnet(data)
         
-        #同训练阶段一样
-        labels = [[1,0] if L==0 else [0,1] for L in label]
-        labels = t.FloatTensor(labels).cuda()
-        
-        loss = criteria(out, labels)
-        val_loss += loss.data.item()
-        pre_label = t.LongTensor([0 if x[0]>=x[1] else 1 for x in out])
-        val_a += pre_label.shape[0]
-        val_c += (pre_label==label).sum().item()
-        
+    val_acc,val_loss = validate(resnet, test_loader, criteria)
     print('val loss: ', val_loss)
     val_loss_history.append(val_loss)
-    print('val accL: ', val_c/val_a)
-    val_acc_history.append(val_c/val_a)
+    print('val accL: ', val_acc)
+    val_acc_history.append(val_acc)
     
     if len(val_loss_history)==1 or val_loss < best_val_loss:
         best_val_loss = val_loss
@@ -148,4 +159,5 @@ plt.plot(x, train_loss_history, linestyle='--', label='train')
 plt.plot(x, val_loss_history, linestyle='-', label='validate')
 plt.legend()
 plt.show()
+'''
 
