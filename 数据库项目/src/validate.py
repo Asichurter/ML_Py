@@ -8,7 +8,7 @@ Created on Thu May 16 16:12:51 2019
 from PIL import Image, ImageDraw, ImageFont
 import random as rd
 
-def get_validate_img(path=r'C:/Users/10904/Desktop/数据库项目/image/valCache/val.png'):
+def get_validate_img(path=r'D:/ML_Py/数据库项目/image/valCache/val.png'):
     #背景颜色范围
     color = rd.randint(120, 255)
     img = Image.new(mode='RGB', size=(120,30), color=(color,color, color))

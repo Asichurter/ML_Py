@@ -12,7 +12,7 @@ from validate import get_validate_img
 import MySQLdb as db
 
 class LoginFrame():
-    def __init__(self, root,valPath= r'C:/Users/10904/Desktop/数据库项目/image/valCache/val.png', color='#F0FFF0',
+    def __init__(self, root,valPath= r'D:/ML_Py/数据库项目/image/valCache/val.png', color='#F0FFF0',
                  db='databasesys'):
         self.ValPath = valPath
         self.Root = root
@@ -22,7 +22,7 @@ class LoginFrame():
         
         self.ValidateMsg = get_validate_img(valPath)
         self.ValidatePhoto = tk.PhotoImage(file=valPath, name='validatephoto')
-        self.WarningPhoto = tk.PhotoImage(file=r'C:/Users/10904/Desktop/数据库项目/image/warning.png')
+        self.WarningPhoto = tk.PhotoImage(file=r'D:/ML_Py/数据库项目/image/warning.png')
         
         self.Top = tk.Frame(root,bg='#F0FFF0')
         self.TopLabel = tk.Label(self.Top, text='****** 欢迎登陆 ******', 
