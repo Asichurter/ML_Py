@@ -17,6 +17,7 @@ def main():
     #background.pack()
     root.config(bg = '#F0FFF0')
     root.geometry('600x600')
+    root.resizable(width=False, height=False)
     root.title('用户登录')
     login = LoginFrame(root)
     root.mainloop()
