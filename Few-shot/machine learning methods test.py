@@ -15,8 +15,8 @@ from sklearn.neighbors import KNeighborsClassifier as KNN
 from sklearn.svm import SVC
 
 
-DATA_SAVE_NAME = r'data_0504.npy'
-LABEL_SAVE_NAME = r'label_0504.npy'
+DATA_SAVE_NAME = r'datas/data_0504.npy'
+LABEL_SAVE_NAME = r'datas/label_0504.npy'
 DATA_SPLIT = 0.8
 TEST_NUM = 1000
 
@@ -24,7 +24,7 @@ TEST_NUM = 1000
 if __name__ == '__main__':
     #collect_save_data(seed=3)
     
-    raw_data = np.load('raw_'+DATA_SAVE_NAME)
+    #raw_data = np.load('raw_'+DATA_SAVE_NAME)
     data = np.load(DATA_SAVE_NAME)
     label = np.load(LABEL_SAVE_NAME)
     
@@ -64,7 +64,9 @@ if __name__ == '__main__':
     plt.plot([x[0] for x,l,pl in zip(test_data,test_label,predict) if l==0 and pl==1], [x[1] for x,l,pl in zip(test_data,test_label,predict) if l==0 and pl==1], 'gx', label='benign_wrong')
     
     plt.legend()
+    plt.savefig('D:/1.png')
     plt.show()
+
     
     
     

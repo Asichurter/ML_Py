@@ -252,13 +252,15 @@ def create_malware_images(dest=r'D:/peimages/validate/', base=r'D:/pe/', num_per
             num += 1
             print(num)
             
-def split_datas(src=r'D:/peimages/test for cnn/no padding/malware/', dest=r'D:/peimages/validate/malware/', ratio=0.2):
+def split_datas(src=r'D:/peimages/test for cnn/no padding/malware/', dest=r'D:/peimages/validate/malware/',
+                ratio=0.2, mode='x'):
     '''
     将生成的样本按比例随机抽样分割，并且移动到指定文件夹下，用于训练集和验证集的制作
     src:源文件夹
     dest:目标文件夹
     ratio:分割比例
     '''
+    assert mode in ['c','x'], '选择的模式错误，只能复制c或者剪切x'
     All = os.listdir(src)
     size = int(len(All)*ratio)
     samples_names = random.sample(All, size)
@@ -267,7 +269,10 @@ def split_datas(src=r'D:/peimages/test for cnn/no padding/malware/', dest=r'D:/p
         if item in samples_names:
             num += 1
             path = src+item
-            shutil.move(path, dest)
+            if mode=='x':
+                shutil.move(path, dest)
+            else:
+                shutil.copy(src=path, dst=dest)
             print(num)
     
             
@@ -284,10 +289,31 @@ if __name__ == '__main__':
         #print(p+'\n')
     #print(check_if_executable(r'C:/Windows/System32/1029/VsGraphicsResources.dll/'))
     '''
-    #benign = get_benign_exe_abspath()
-    #convert_to_images(benign,destination='D:/peimages/test for cnn/no padding/benign/',
-    #                  mode='dir',padding=False,num_constrain=1000)
-    
+    # convert_to_images(base=r'D:/pe/virus/',
+    #                   destination=r'D:/peimages/class default/validate/malware/',
+    #                   mode='dir',
+    #                   padding=False,
+    #                   num_constrain=200)
+    # benign = get_benign_exe_abspath(base=r'C:/Program Files/')
+    # convert_to_images(benign,destination='D:/peimages/class default/train/benign/',
+    #                    mode='dir',padding=False,num_constrain=600)
+    # split_datas(src=r'D:/peimages/test for cnn/no padding/benign/',
+    #             dest=r'D:/peimages/class default/train/benign/',
+    #             ratio=0.5,
+    #             mode='c')
+    # split_datas(src=r'D:/peimages/class default/train/benign/',
+    #             dest=r'D:/peimages/class default/validate/benign/',
+    #             ratio=0.2,
+    #             mode='x')
+    # create_malware_images(dest=r'D:/peimages/multiple class default/train/malware/',
+    #                       num_per_class=85,
+    #                       deprecated=['aworm','virus','dos','email','safe','rootkit'])
+    # convert_to_images(base=r'D:/pe/rootkit/',
+    #                   destination=r'D:/peimages/multiple class default/validate/malware/',
+    #                   mode='dir',
+    #                   padding=False,
+    #                   num_constrain=70)
 
-    
+
+
 
