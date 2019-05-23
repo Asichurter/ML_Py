@@ -5,7 +5,7 @@ Created on Sat May 11 18:04:41 2019
 @author: 10904
 """
 import numpy as np
-from utils import check_continuing_decrease
+from utils import check_continuing_decrease, validate
 import torch as t
 #import torch.nn.functional as F
 from ResNetForMalwareImage import ResNet
@@ -17,7 +17,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 early_stop = False
 early_stop_window = 3
-save_path = 'D:/ML_Py/Few-shot/doc/基于resnet18的非缺省windows实验/'
+save_path = 'D:/ML_Py/Few-shot/doc/基于resnet18的单类实验2(OnLineGames)/'
 
 '''
 def get_pretrained_resnet():
@@ -34,33 +34,6 @@ def get_pretrained_resnet():
             parameters.append(par)
     return resnet,parameters'''
 
-def validate(model, dataloader, Criteria):
-    '''
-    使用指定的dataloader验证模型\n
-    model:训练的模型\n
-    dataloader:验证的数据加载器\n
-    criteria:损失函数\n
-    '''
-    val_a = 0
-    val_c = 0
-    val_loss = 0.
-    #将模型调整为测试状态
-    model.eval()
-    for data,label in dataloader:
-        data = data.cuda()
-        out = model(data)
-        
-        #同训练阶段一样
-        labels = [[1,0] if L==0 else [0,1] for L in label]
-        labels = t.FloatTensor(labels).cuda()
-        
-        loss = Criteria(out, labels)
-        val_loss += loss.data.item()
-        pre_label = t.LongTensor([0 if x[0]>=x[1] else 1 for x in out])
-        val_a += pre_label.shape[0]
-        val_c += (pre_label==label).sum().item()
-    return val_c/val_a,val_loss
-
 #最大迭代次数    
 MAX_ITER = 30
 #记录历史的训练和验证数据
@@ -69,12 +42,21 @@ val_acc_history = []
 train_loss_history = []
 val_loss_history = []
 
+int_acc_his = []
+int_los_his = []
+ext_acc_his = []
+ext_los_his = []
+
 #测试集数据集
-dataset = DirDataset(r'D:/peimages/test for cnn/no padding/')
+dataset = DirDataset(r'D:/peimages/one class 2/train/')
 #dataset = t.load('datas/train_dataset.tds')
 #dataset = PretrainedResnetDataset(r'D:/peimages/test for cnn/no padding/')
 #验证集数据集
-val_set = DirDataset(r'D:/peimages/validate/')
+val_set = DirDataset(r'D:/peimages/one class 2/intern validate/')
+class_int_valset = DirDataset(r'D:/peimages/one class 2/class intern validate/')
+int_loader = DataLoader(class_int_valset, batch_size=16, shuffle=False)
+class_ext_valset = DirDataset(r'D:/peimages/one class 2/extern validate/')
+ext_loader = DataLoader(class_ext_valset, batch_size=16, shuffle=False)
 #val_set = t.load('datas/val_dataset.tds')
 #t.save(val_set, 'val_dataset.tds')
 #val_set = PretrainedResnetDataset(r'D:/peimages/validate/')
@@ -93,7 +75,7 @@ opt = t.optim.Adam(resnet.parameters(), lr=1e-3, weight_decay=1e-4)
 #使用二元交叉熵为损失函数（可以替换为交叉熵损失函数）
 criteria = t.nn.BCELoss()
 #学习率调整器，使用的是按照指标的变化进行调整的调整器
-scheduler = ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=0, verbose=True, min_lr=1e-5)
+scheduler = ReduceLROnPlateau(opt, mode='min', factor=0.5, patience=3, verbose=True, min_lr=1e-5)
 #criteria = t.nn.CrossEntropyLoss()
 num = 0
 best_val_loss = 0.
@@ -130,12 +112,30 @@ for i in range(MAX_ITER):
     train_loss_history.append(Loss)
     print('train acc: ', c/a)
     train_acc_history.append(c/a)
+
+    # val_acc,val_loss = validate(resnet, test_loader, criteria)
+    # print('val loss: ', val_loss)
+    # val_loss_history.append(val_loss)
+    # print('val accL: ', val_acc)
+    # val_acc_history.append(val_acc)
         
     val_acc,val_loss = validate(resnet, test_loader, criteria)
-    print('val loss: ', val_loss)
+    print('intern val loss: ', val_loss)
     val_loss_history.append(val_loss)
-    print('val accL: ', val_acc)
+    print('intern val accL: ', val_acc)
     val_acc_history.append(val_acc)
+
+    int_acc,int_los = validate(resnet, int_loader, criteria)
+    print('class intern val loss: ', int_los)
+    int_los_his.append(int_los)
+    print('class intern val acc: ', int_acc)
+    int_acc_his.append(int_acc)
+
+    ext_acc,ext_los = validate(resnet, ext_loader, criteria)
+    print('extern val loss: ', ext_los)
+    ext_los_his.append(ext_los)
+    print('extern val acc: ', ext_acc)
+    ext_acc_his.append(ext_acc)
     
     if len(val_loss_history)==1 or val_loss < best_val_loss:
         best_val_loss = val_loss
@@ -151,11 +151,12 @@ for i in range(MAX_ITER):
 
 #根据历史值画出准确率和损失值曲线    
 x = [i for i in range(num)]
+'''
 plt.title('Accuracy')
 plt.plot(x, train_acc_history, linestyle='--', label='train')
 plt.plot(x, val_acc_history, linestyle='-', label='validate')
 plt.legend()
-plt.savefig(save_path+'acc.png')
+plt.savefig(save_path+'intern_acc.png')
 plt.show()
 
 
@@ -163,11 +164,45 @@ plt.title('Loss')
 plt.plot(x, train_loss_history, linestyle='--', label='train')
 plt.plot(x, val_loss_history, linestyle='-', label='validate')
 plt.legend()
-plt.savefig(save_path+'loss.png')
+plt.savefig(save_path+'intern_loss.png')
 plt.show()
 
 ACC = np.array(val_acc_history)
 LOSS = np.array(val_loss_history)
-np.save(save_path+'acc.npy', ACC)
-np.save(save_path+'loss.npy', LOSS)
+'''
+plt.title('Validate Accuracy Comparison')
+plt.plot(x, val_acc_history, linestyle='-', color='red', label='same type, %f')
+plt.plot(x, int_acc_his, linestyle='-', color='green', label='same hyper type')
+plt.plot(x, ext_acc_his, linestyle='-', color='blue', label='different type')
+plt.legend()
+plt.show()
+
+plt.title('Validate Loss Comparison')
+plt.plot(x, val_loss_history, linestyle='--', color='red', label='same type')
+plt.plot(x, int_los_his, linestyle='--', color='green', label='same hyper type')
+plt.plot(x, ext_los_his, linestyle='--', color='blue', label='different type')
+plt.legend()
+plt.show()
+
+acc_np = np.array(val_acc_history)
+los_np = np.array(val_loss_history)
+
+int_acc_np = np.array(int_acc_his)
+int_los_np = np.array(int_los_his)
+
+ext_acc_np = np.array(ext_acc_his)
+ext_los_np = np.array(ext_los_his)
+
+np.save('doc/基于resnet18的单类实验2(OnLineGames)/acc.npy', acc_np)
+np.save('doc/基于resnet18的单类实验2(OnLineGames)/loss.npy', los_np)
+
+np.save('doc/基于resnet18的单类实验2(OnLineGames)/int_acc.npy', int_acc_np)
+np.save('doc/基于resnet18的单类实验2(OnLineGames)/int_loss.npy', int_los_np)
+
+np.save('doc/基于resnet18的单类实验2(OnLineGames)/ext_acc.npy', ext_acc_np)
+np.save('doc/基于resnet18的单类实验2(OnLineGames)/ext_loss.npy', ext_los_np)
+
+#
+# np.save(save_path+'intern_acc.npy', ACC)
+# np.save(save_path+'intern_loss.npy', LOSS)
 

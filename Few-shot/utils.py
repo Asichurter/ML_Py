@@ -4,6 +4,7 @@ Created on Mon Apr 29 16:09:04 2019
 
 @author: 10904
 """
+import torch as t
 import numpy as np
 import PIL.Image as Image 
 import os
@@ -32,7 +33,8 @@ next_times = 0
 return_times = 0
 
 
-def convert_to_images(base, destination=HOME, mode='file', method='normal',padding=True,num_constrain=200):
+def convert_to_images(base, destination=HOME, mode='file', method='normal',
+                      padding=True,num_constrain=200, sample=False, cluster=None):
     '''
     base:目标文件或者目标所在的文件夹\n
     destination:转换后存储的文件夹\n
@@ -66,13 +68,20 @@ def convert_to_images(base, destination=HOME, mode='file', method='normal',paddi
         if not os.path.isdir(base):
             raise Exception(base + ' is not a director!\n')
         files = os.listdir(base)
-        for i,one in enumerate(files):
-            if num_constrain is not None and i > num_constrain :
+        assert cluster is None or not sample, '限制名字和采样不能同时进行！'
+        if sample:
+            files = random.sample(files, num_constrain)
+        num = 0
+        for one in files:
+            if num_constrain is not None and num == num_constrain :
                 break
-            else:
-                print(i)
+            child_cluster = one.split(sep='.')[-2]
+            if cluster is not None and child_cluster != cluster:
+                continue
+            print(num)
             im = convert(base+one, method, padding)
             im.save(destination+one+'.jpg', 'JPEG')
+            num += 1
             
     elif mode == 'file':
         if os.path.isdir(base):
@@ -239,7 +248,10 @@ def create_malware_images(dest=r'D:/peimages/validate/', base=r'D:/pe/', num_per
     if base[-1] != '/':
         base += '/'
     num = 0
-    for child in os.listdir(base):
+    all_columns = os.listdir(base)
+    for deprecate in deprecated:
+        assert deprecate in all_columns, '废弃项 %s 不在当前的文件列表中！'%deprecate
+    for child in all_columns:
         if child in deprecated:
             continue
         child_columns = os.listdir(base+child)
@@ -258,11 +270,11 @@ def split_datas(src=r'D:/peimages/test for cnn/no padding/malware/', dest=r'D:/p
     将生成的样本按比例随机抽样分割，并且移动到指定文件夹下，用于训练集和验证集的制作
     src:源文件夹
     dest:目标文件夹
-    ratio:分割比例
+    ratio:分割比例或者最大数量
     '''
     assert mode in ['c','x'], '选择的模式错误，只能复制c或者剪切x'
     All = os.listdir(src)
-    size = int(len(All)*ratio)
+    size = int(len(All)*ratio) if ratio<1 else ratio
     samples_names = random.sample(All, size)
     num = 0
     for item in All:
@@ -274,6 +286,33 @@ def split_datas(src=r'D:/peimages/test for cnn/no padding/malware/', dest=r'D:/p
             else:
                 shutil.copy(src=path, dst=dest)
             print(num)
+
+def validate(model, dataloader, Criteria):
+    '''
+    使用指定的dataloader验证模型\n
+    model:训练的模型\n
+    dataloader:验证的数据加载器\n
+    criteria:损失函数\n
+    '''
+    val_a = 0
+    val_c = 0
+    val_loss = 0.
+    # 将模型调整为测试状态
+    model.eval()
+    for data, label in dataloader:
+        data = data.cuda()
+        out = model(data)
+
+        # 同训练阶段一样
+        labels = [[1, 0] if L == 0 else [0, 1] for L in label]
+        labels = t.FloatTensor(labels).cuda()
+
+        loss = Criteria(out, labels)
+        val_loss += loss.data.item()
+        pre_label = t.LongTensor([0 if x[0] >= x[1] else 1 for x in out])
+        val_a += pre_label.shape[0]
+        val_c += (pre_label == label).sum().item()
+    return val_c / val_a, val_loss
     
             
 if __name__ == '__main__':
@@ -294,25 +333,35 @@ if __name__ == '__main__':
     #                   mode='dir',
     #                   padding=False,
     #                   num_constrain=200)
-    # benign = get_benign_exe_abspath(base=r'C:/Program Files/')
-    # convert_to_images(benign,destination='D:/peimages/class default/train/benign/',
-    #                    mode='dir',padding=False,num_constrain=600)
+    # benign = get_benign_exe_abspath()#base=r'C:/Program Files/'
+    # convert_to_images(benign,destination='D:/peimages/one class/train/benign/',
+    #                    mode='dir',padding=False,num_constrain=900)
     # split_datas(src=r'D:/peimages/test for cnn/no padding/benign/',
     #             dest=r'D:/peimages/class default/train/benign/',
     #             ratio=0.5,
     #             mode='c')
-    # split_datas(src=r'D:/peimages/class default/train/benign/',
-    #             dest=r'D:/peimages/class default/validate/benign/',
-    #             ratio=0.2,
+    # split_datas(src=r'D:/peimages/one class 2/train/malware/',
+    #             dest=r'D:/peimages/one class 2/intern validate/malware/',
+    #             ratio=300,
     #             mode='x')
-    # create_malware_images(dest=r'D:/peimages/multiple class default/train/malware/',
-    #                       num_per_class=85,
-    #                       deprecated=['aworm','virus','dos','email','safe','rootkit'])
-    # convert_to_images(base=r'D:/pe/rootkit/',
-    #                   destination=r'D:/peimages/multiple class default/validate/malware/',
+    # create_malware_images(dest=r'D:/peimages/one class 2/extern validate/malware/',
+    #                       num_per_class=30,
+    #                       deprecated=['aworm','trojan0', 'trojan1', 'trojan2', 'trojan3-2',
+    #                                   'trojan4', 'trojan5'])
+    # convert_to_images(base=r'D:/pe/trojan0/',
+    #                   destination=r'D:/peimages/one class 2/train/malware/',
     #                   mode='dir',
     #                   padding=False,
-    #                   num_constrain=70)
+    #                   num_constrain=1200,
+    #                   cluster='OnLineGames',
+    #                   sample=False)
+    convert_to_images(base=r'D:/pe/trojan5/',
+                      destination=r'D:/peimages/one class 2/class intern validate/malware/',
+                      mode='dir',
+                      padding=False,
+                      num_constrain=60,
+                      sample=True)
+
 
 
 
