@@ -12,6 +12,7 @@ from extract import extract_infos
 import random
 import shutil
 #import pandas as pd
+import warnings
 
 HOME = r'C:/Users/10904/Desktop/'
 BASE = r'D:/pe/trojan0/'
@@ -24,6 +25,8 @@ SIZE_RANGE = [15, 3000]
 DATA_SAVE_NAME = r'data_0504.npy'
 LABEL_SAVE_NAME = r'label_0504.npy'
 
+deprecated_benign = ['87机械合金幻彩版', '360', 'LuDaShi']
+
 
 WIDTH = 256
 WIDTH_SIZE = 10
@@ -34,13 +37,16 @@ return_times = 0
 
 
 def convert_to_images(base, destination=HOME, mode='file', method='normal',
-                      padding=True,num_constrain=200, sample=False, cluster=None):
+                      padding=False,num_constrain=None, sample=False, cluster=None):
     '''
     base:目标文件或者目标所在的文件夹\n
     destination:转换后存储的文件夹\n
     mode:转换的模式：单个文件还是该文件夹下所有的文件\n
     method:转换的方法，是否要标准化\n
     padding:是否填充0而不拉伸图像\n
+    num_constrain:数量限制。不填就是不设上限
+    sample:是否采样
+    cluster:是否只转换指定的名称簇
     '''
     assert method in ['plain','normal'],'选择的转换算法不在预设中！'
     assert mode in ['file', 'dir'], '转换的对象类型不在预设中！'
@@ -75,8 +81,8 @@ def convert_to_images(base, destination=HOME, mode='file', method='normal',
         for one in files:
             if num_constrain is not None and num == num_constrain :
                 break
-            child_cluster = one.split(sep='.')[-2]
-            if cluster is not None and child_cluster != cluster:
+            child_clusters = [one.split(sep='.')[-2],one.split(sep='.')[-1]]
+            if cluster is not None and cluster not in child_clusters:
                 continue
             print(num)
             im = convert(base+one, method, padding)
@@ -123,18 +129,23 @@ def convert(path, method, padding):
         
 #检查一个地址的文件扩展名是否是可执行文件
 def check_if_executable(path, size_thre=SIZE_RANGE):
-    #需要去掉最后一个斜杠/
-    extension_name = path[:-1].split('.')[-1]
-    #除以1024单位为千字节KB
-    size = int(os.path.getsize(path[:-1])/1024)
-    #只有是pe文件且大小在范围之内的文件的绝对路径才会被返回
-    return extension_name in EXES and size >= size_thre[0] and size <= size_thre[1]
+    try:
+        #需要去掉最后一个斜杠/
+        extension_name = path[:-1].split('.')[-1]
+        #除以1024单位为千字节KB
+        size = int(os.path.getsize(path[:-1])/1024)
+        #只有是pe文件且大小在范围之内的文件的绝对路径才会被返回
+        return extension_name in EXES and size >= size_thre[0] and size <= size_thre[1]
+    except FileNotFoundError:
+        return False
 
 #在windows目录下查找所有可执行文件的目录
 #本函数必须在有管理员权限下才能使用      
 def get_benign_exe_abspath(base=BENIGN_BASE):
     if os.path.isdir(base):
         for dirs in os.listdir(base):
+            if dirs in deprecated_benign:
+                continue
             #加上斜杠保证以后的递归能继续在文件夹中进行
             for ele in get_benign_exe_abspath(base+dirs+'/'):
                 if check_if_executable(ele):
@@ -275,6 +286,8 @@ def split_datas(src=r'D:/peimages/test for cnn/no padding/malware/', dest=r'D:/p
     assert mode in ['c','x'], '选择的模式错误，只能复制c或者剪切x'
     All = os.listdir(src)
     size = int(len(All)*ratio) if ratio<1 else ratio
+    if len(All) < size:
+        warnings.warn('分割时，总数量没有要求的数量大！', RuntimeWarning)
     samples_names = random.sample(All, size)
     num = 0
     for item in All:
@@ -286,6 +299,23 @@ def split_datas(src=r'D:/peimages/test for cnn/no padding/malware/', dest=r'D:/p
             else:
                 shutil.copy(src=path, dst=dest)
             print(num)
+
+def create_benign(dest, num,
+                  base='D:/peimages/benign_collection/',
+                  using=[0,1,2],
+                  using_dict={0:'来自windows/', 1:'来自C盘的ProgramFiles/', 2:'来自C盘的ProgramFilesx86/'}):
+    max_num = num + 200   #为了防止重名文件出现的数量遗漏
+    using_list = [using_dict[i] for i in using]
+    for candidate in using_list:
+        split_datas(src=base+candidate, dest=dest, ratio=int(max_num/len(using_list)), mode='c')
+    files =  os.listdir(dest)
+    assert len(files) >= num, '数量不够num！'
+    #为了达到指定的数量，应该随机删去一些为了防止重新多设置的文件
+    delete_files = random.sample(files, len(files)-num)
+    for file in files:
+        if file in delete_files:
+            os.remove(dest+file)
+
 
 def validate(model, dataloader, Criteria):
     '''
@@ -333,17 +363,18 @@ if __name__ == '__main__':
     #                   mode='dir',
     #                   padding=False,
     #                   num_constrain=200)
-    # benign = get_benign_exe_abspath()#base=r'C:/Program Files/'
-    # convert_to_images(benign,destination='D:/peimages/one class/train/benign/',
-    #                    mode='dir',padding=False,num_constrain=900)
-    # split_datas(src=r'D:/peimages/test for cnn/no padding/benign/',
-    #             dest=r'D:/peimages/class default/train/benign/',
-    #             ratio=0.5,
+    # benign = get_benign_exe_abspath(base=r'C:/Program Files (x86)/')#base=r'C:/Program Files/'  #
+    # convert_to_images(benign,destination='D:/peimages/benign_collection/来自C盘的ProgramFilesx86/',
+    #                    mode='dir',padding=False,num_constrain=3000)
+    # split_datas(src=r'D:/peimages/one class 4/train/benign/',
+    #             dest=r'D:/peimages/few-shot test/class4_basedon_class1/train/benign/',
+    #             ratio=205,
     #             mode='c')
-    # split_datas(src=r'D:/peimages/one class 2/train/malware/',
-    #             dest=r'D:/peimages/one class 2/intern validate/malware/',
-    #             ratio=300,
-    #             mode='x')
+    split_datas(src=r'D:/peimages/few-shot test/class4_basedon_class1/train/benign/',
+                dest=r'D:/peimages/few-shot test/class4_basedon_class1/validate/benign/',
+                ratio=200,
+                mode='x')
+    # create_benign(dest='D:/peimages/oneClasses/trojan1.Buzus/train/benign/',num=1200)
     # create_malware_images(dest=r'D:/peimages/one class 2/extern validate/malware/',
     #                       num_per_class=30,
     #                       deprecated=['aworm','trojan0', 'trojan1', 'trojan2', 'trojan3-2',
@@ -355,12 +386,13 @@ if __name__ == '__main__':
     #                   num_constrain=1200,
     #                   cluster='OnLineGames',
     #                   sample=False)
-    convert_to_images(base=r'D:/pe/trojan5/',
-                      destination=r'D:/peimages/one class 2/class intern validate/malware/',
-                      mode='dir',
-                      padding=False,
-                      num_constrain=60,
-                      sample=True)
+    # convert_to_images(base=r'D:/pe/trojan1/',
+    #                   destination=r'D:/peimages/oneClasses/trojan1.Buzus/remain/malware/',
+    #                   mode='dir',
+    #                   padding=False,
+    #                   #num_constrain=1200,
+    #                   cluster='Buzus',
+    #                   sample=False)
 
 
 

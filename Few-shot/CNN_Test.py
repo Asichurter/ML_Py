@@ -17,7 +17,12 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 early_stop = False
 early_stop_window = 3
-save_path = 'D:/ML_Py/Few-shot/doc/基于resnet18的单类实验2(OnLineGames)/'
+model_save_path = 'D:/peimages/oneClasses/trojan1.Buzus/'
+save_path = 'D:/ML_Py/Few-shot/doc/基于resnet18的单类实验(trojan1.Buzus)/'
+train_set_path = 'D:/peimages/oneClasses/trojan1.Buzus/train/'
+val_set_path = 'D:/peimages/oneClasses/trojan1.Buzus/validate/'
+test_set_path = 'D:/peimages/oneClasses/trojan1.Buzus/test/'
+
 
 '''
 def get_pretrained_resnet():
@@ -42,28 +47,35 @@ val_acc_history = []
 train_loss_history = []
 val_loss_history = []
 
-int_acc_his = []
-int_los_his = []
+# int_acc_his = []
+# int_los_his = []
 ext_acc_his = []
 ext_los_his = []
 
-#测试集数据集
-dataset = DirDataset(r'D:/peimages/one class 2/train/')
+#训练集数据集
+dataset = DirDataset(train_set_path)
 #dataset = t.load('datas/train_dataset.tds')
 #dataset = PretrainedResnetDataset(r'D:/peimages/test for cnn/no padding/')
 #验证集数据集
-val_set = DirDataset(r'D:/peimages/one class 2/intern validate/')
-class_int_valset = DirDataset(r'D:/peimages/one class 2/class intern validate/')
-int_loader = DataLoader(class_int_valset, batch_size=16, shuffle=False)
-class_ext_valset = DirDataset(r'D:/peimages/one class 2/extern validate/')
-ext_loader = DataLoader(class_ext_valset, batch_size=16, shuffle=False)
+val_set = DirDataset(val_set_path)
+
+test_set = DirDataset(test_set_path)
+
+# class_int_valset = DirDataset(r'D:/peimages/one class 2/class intern validate/')
+# int_loader = DataLoader(class_int_valset, batch_size=16, shuffle=False)
+
+#class_ext_valset = DirDataset(r'D:/peimages/one class 3/extern validate/')
+#ext_loader = DataLoader(class_ext_valset, batch_size=16, shuffle=False)
+
 #val_set = t.load('datas/val_dataset.tds')
 #t.save(val_set, 'val_dataset.tds')
 #val_set = PretrainedResnetDataset(r'D:/peimages/validate/')
 #训练集数据加载器
 train_loader = DataLoader(dataset, batch_size=48, shuffle=True)
 #验证集数据加载器
-test_loader = DataLoader(val_set, batch_size=16, shuffle=False)
+val_loader = DataLoader(val_set, batch_size=16, shuffle=False)
+test_loader = DataLoader(test_set, batch_size=16, shuffle=False)
+
 resnet = ResNet(1)
 #resnet,pars = get_pretrained_resnet()
 resnet = resnet.cuda()
@@ -113,33 +125,27 @@ for i in range(MAX_ITER):
     print('train acc: ', c/a)
     train_acc_history.append(c/a)
 
-    # val_acc,val_loss = validate(resnet, test_loader, criteria)
-    # print('val loss: ', val_loss)
-    # val_loss_history.append(val_loss)
-    # print('val accL: ', val_acc)
-    # val_acc_history.append(val_acc)
-        
-    val_acc,val_loss = validate(resnet, test_loader, criteria)
-    print('intern val loss: ', val_loss)
+    val_acc,val_loss = validate(resnet, val_loader, criteria)
+    print('val loss: ', val_loss)
     val_loss_history.append(val_loss)
-    print('intern val accL: ', val_acc)
+    print('val accL: ', val_acc)
     val_acc_history.append(val_acc)
 
-    int_acc,int_los = validate(resnet, int_loader, criteria)
-    print('class intern val loss: ', int_los)
-    int_los_his.append(int_los)
-    print('class intern val acc: ', int_acc)
-    int_acc_his.append(int_acc)
+    # int_acc,int_los = validate(resnet, int_loader, criteria)
+    # print('class intern val loss: ', int_los)
+    # int_los_his.append(int_los)
+    # print('class intern val acc: ', int_acc)
+    # int_acc_his.append(int_acc)
 
-    ext_acc,ext_los = validate(resnet, ext_loader, criteria)
-    print('extern val loss: ', ext_los)
-    ext_los_his.append(ext_los)
-    print('extern val acc: ', ext_acc)
-    ext_acc_his.append(ext_acc)
+    # ext_acc,ext_los = validate(resnet, ext_loader, criteria)
+    # print('extern val loss: ', ext_los)
+    # ext_los_his.append(ext_los)
+    # print('extern val acc: ', ext_acc)
+    # ext_acc_his.append(ext_acc)
     
     if len(val_loss_history)==1 or val_loss < best_val_loss:
         best_val_loss = val_loss
-        t.save(resnet, save_path+'best_loss_model.h5')
+        t.save(resnet, model_save_path+'best_loss_model.h5')
         print('save model at epoch %d'%i)
     
     num += 1
@@ -171,36 +177,43 @@ ACC = np.array(val_acc_history)
 LOSS = np.array(val_loss_history)
 '''
 plt.title('Validate Accuracy Comparison')
-plt.plot(x, val_acc_history, linestyle='-', color='red', label='same type, %f')
-plt.plot(x, int_acc_his, linestyle='-', color='green', label='same hyper type')
-plt.plot(x, ext_acc_his, linestyle='-', color='blue', label='different type')
+plt.plot(x, val_acc_history, linestyle='-', color='green', label='validate')
+plt.plot(x, train_acc_history, linestyle='-', color='red', label='train')
+#plt.plot(x, int_acc_his, linestyle='-', color='green', label='same hyper type')
+#plt.plot(x, ext_acc_his, linestyle='-', color='green', label='different type')
 plt.legend()
+plt.savefig(save_path+'acc.png')
 plt.show()
 
 plt.title('Validate Loss Comparison')
-plt.plot(x, val_loss_history, linestyle='--', color='red', label='same type')
-plt.plot(x, int_los_his, linestyle='--', color='green', label='same hyper type')
-plt.plot(x, ext_los_his, linestyle='--', color='blue', label='different type')
+plt.plot(x, val_loss_history, linestyle='--', color='green', label='validate')
+plt.plot(x, train_loss_history, linestyle='--', color='red', label='train')
+#plt.plot(x, int_los_his, linestyle='--', color='green', label='same hyper type')
+#plt.plot(x, ext_los_his, linestyle='--', color='green', label='different type')
 plt.legend()
+plt.savefig(save_path+'loss.png')
 plt.show()
 
 acc_np = np.array(val_acc_history)
 los_np = np.array(val_loss_history)
 
-int_acc_np = np.array(int_acc_his)
-int_los_np = np.array(int_los_his)
+# int_acc_np = np.array(int_acc_his)
+# int_los_np = np.array(int_los_his)
 
-ext_acc_np = np.array(ext_acc_his)
-ext_los_np = np.array(ext_los_his)
+# ext_acc_np = np.array(ext_acc_his)
+# ext_los_np = np.array(ext_los_his)
 
-np.save('doc/基于resnet18的单类实验2(OnLineGames)/acc.npy', acc_np)
-np.save('doc/基于resnet18的单类实验2(OnLineGames)/loss.npy', los_np)
+np.save(save_path+'acc.npy', acc_np)
+np.save(save_path+'loss.npy', los_np)
 
-np.save('doc/基于resnet18的单类实验2(OnLineGames)/int_acc.npy', int_acc_np)
-np.save('doc/基于resnet18的单类实验2(OnLineGames)/int_loss.npy', int_los_np)
+print('********** Test Stage **********')
+print(validate(resnet, test_loader, criteria))
 
-np.save('doc/基于resnet18的单类实验2(OnLineGames)/ext_acc.npy', ext_acc_np)
-np.save('doc/基于resnet18的单类实验2(OnLineGames)/ext_loss.npy', ext_los_np)
+# np.save('doc/基于resnet18的单类实验2(OnLineGames)/int_acc.npy', int_acc_np)
+# np.save('doc/基于resnet18的单类实验2(OnLineGames)/int_loss.npy', int_los_np)
+
+# np.save(save_path+'ext_acc.npy', ext_acc_np)
+# np.save(save_path+'ext_loss.npy', ext_los_np)
 
 #
 # np.save(save_path+'intern_acc.npy', ACC)
