@@ -21,11 +21,11 @@ class Node:
         self.Value = None
         
     def is_leaf(self):
-        return not self.Tag == None
+        return not self.Tag is None
     
     #收集本节点一下的所有位于子节点的数据     
     def collect_data(self):
-        if not self.Tag == None:
+        if not self.Tag is None:
             return self.Datas
         else:
             all_data = []
@@ -35,7 +35,7 @@ class Node:
     
     #收集本节点一下的所有子节点
     def collect_leaf_node(self):
-        if not self.Tag == None:
+        if not self.Tag is None:
             return [self]
         else:
             all_leaf = []
@@ -73,7 +73,7 @@ class DecisionTree:
     def grow_tree(self, datas, node, depre_attr, root=False):
         if root:
             check_res = self.check_datas_type(datas)
-            if check_res == None:
+            if check_res is None:
                 self.Root = Node(None)
                 self.grow_tree(datas, self.Root, [])
             #如果建树的根节点的类本来就是同一类的话，则不会递归调用
@@ -87,7 +87,7 @@ class DecisionTree:
                 check_res = self.check_datas_type(datas)
                 #如果发现当前节点的类还有不同，同时属性还没有用完
                 #则找到信息增益比最大的属性，划分后递归调用
-                if check_res == None and not depre_attr.__len__() == self.Attr.__len__():
+                if check_res is None and not depre_attr.__len__() == self.Attr.__len__():
                     attr_ratio = []
                     attr_entro = []
                     attr_above_mean = {}
@@ -163,7 +163,7 @@ class DecisionTree:
             return total*-1
         
         elif attr_type == 'attrs':
-            if attr == None:
+            if attr is None:
                 raise Exception('\n计算熵时，指定为计算数据集关于特征attr的熵，但是没有指明attr！')
             if attr >= self.Attr.__len__() or attr < 0 or not type(attr) == int:
                 raise Exception('\n计算熵时，指定为计算数据集关于特征attr的熵，但是指定了非法的attr下标！'+
@@ -224,7 +224,7 @@ class DecisionTree:
         label_dic = {l:0 for l in self.Labels}
         if datas.__len__() == 0:
             #hyper_datas是在节点无数据分划的时候，使用整棵树的数据进行多数表决
-            if not hyper_datas == None:
+            if not hyper_datas is None:
                 for dat in hyper_datas:
                     label_dic[dat[1]] += 1
             else:
@@ -237,13 +237,13 @@ class DecisionTree:
     #递归调用的打印树的方法
     #hierachy：层次列表，每一个取值代表经过了一个层，值的含义是通过的是该层的哪一个子节点
     def print_tree(self, node=None, hierachy=[]):
-        if node == None:
+        if node is None:
             node = self.Root
         print('')
         print('层次: ' + str(hierachy))
         print('节点属性划分: ' + str(node.Attribute))
         print('节点属性值: ' + str(node.Value))
-        if not node.Tag == None:
+        if not node.Tag is None:
             print('叶节点的数据: ' + str(node.Datas))
             print('叶节点标签: ' + str(node.Tag))
         else:
@@ -275,7 +275,7 @@ class DecisionTree:
     #after_pruning:剪枝前还是后
     #这将决定是用父节点下的所有数据的分布计算熵还是对每一个取值单独计算熵
     def cal_loss(self, node, after_pruning=False):
-        if not node.Tag == None:
+        if not node.Tag is None:
             return self.cal_entro('types', node.Datas) + self.Alpha
         else:
             if not after_pruning:
@@ -307,7 +307,7 @@ class DecisionTree:
             close_list.clear()
             for leaf in open_list:
                 #如果当前的叶节点不是根节点，而且不在弃用表中才会进行搜索
-                if not leaf.Parent == None and leaf.Parent not in close_list:
+                if not leaf.Parent is None and leaf.Parent not in close_list:
                     loss_before = self.cal_loss(leaf.Parent, False)
                     loss_after = self.cal_loss(leaf.Parent, True)
                     #如果剪枝以后的损失函数更小，则进行剪枝
@@ -346,14 +346,35 @@ if __name__ == '__main__':
             [['O',True,False,'G'],True],
             [['O',True,False,'VG'],True],
             [['O',False,False,'S'],False]]
-    
+
+    disease_data = [[['Y', 'U', True, True], False],
+                    [['Y', 'U', True, False],False],
+                    [['M', 'U', True, True], True],
+                    [['O', 'M', True, True], True],
+                    [['O', 'O', False, True], True],
+                    [['O', 'O', False, False], False],
+                    [['M', 'O', False, False], True],
+                    [['Y', 'M', True, True], False],
+                    [['Y', 'O', False, True], True],
+                    [['O', 'M', False, True], True],
+                    [['Y', 'M', False, False], True],
+                    [['M', 'M', True, False], True],
+                    [['M', 'U', False, True], True],
+                    [['O', 'M', True, False], False]]
+    disease_tree = DecisionTree([['Y','M','O'],['U','M','O'],[True,False],[False,True]], [True,False], disease_data)
+    disease_tree.print_tree()
+    print('*****************************************************')
+    disease_tree.pruning_with_lossFunc()
+    disease_tree.print_tree()
+
+    '''
     tree = DecisionTree([['Y','M','O'],[False, True],[False, True],['S','G','VG']], [True, False], data)
     tree.print_tree()
     print(tree.predict(['O',False,False,'S']))
     #tree.pruning_with_lossFunc()
     #print('\n******************剪枝前后的分界线*********************')  
     #tree.print_tree()  
-    
+    '''
     '''
     a = np.array([[1,2,3],[4,5,6],[7,8,9]])
     b = np.array([[2,2,2,1],[2,2,2,1],[2,2,2,1]])

@@ -2,7 +2,7 @@
 """
 Created on Thu May 16 16:12:51 2019
 
-@author: 10904
+@author: 唐郅杰
 """
 
 from PIL import Image, ImageDraw, ImageFont
@@ -15,7 +15,8 @@ def get_validate_img(path=r'D:/ML_Py/数据库项目/image/valCache/val.png'):
     drawer = ImageDraw.Draw(img, mode='RGB')
     font = ImageFont.truetype('C:/Windows/Fonts/Arial.ttf', 21)
     candidates = [chr(65+i) for i in range(26)]
-    candidates.append([str(i) for i in range(9)])
+    candidates += [str(i) for i in range(9)]
+    #print(candidates)
     msg = str()
     
     for i in range(4):

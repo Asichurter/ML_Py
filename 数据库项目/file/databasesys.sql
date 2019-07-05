@@ -10,7 +10,7 @@ Target Server Type    : MYSQL
 Target Server Version : 50520
 File Encoding         : 65001
 
-Date: 2019-05-18 00:25:21
+Date: 2019-06-01 16:08:22
 */
 
 SET FOREIGN_KEY_CHECKS=0;
@@ -22,9 +22,9 @@ DROP TABLE IF EXISTS `login`;
 CREATE TABLE `login` (
   `ID` varchar(5) NOT NULL,
   `UserName` varchar(20) NOT NULL,
-  `Passwd` varchar(20) DEFAULT NULL,
+  `Passwd` varchar(20) NOT NULL,
   `Prior` enum('admin','user') NOT NULL,
-  `Email` varchar(50) DEFAULT NULL,
+  `Email` varchar(50) NOT NULL,
   PRIMARY KEY (`ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
@@ -33,7 +33,7 @@ CREATE TABLE `login` (
 -- ----------------------------
 INSERT INTO `login` VALUES ('00001', '1', '1', 'admin', '1');
 INSERT INTO `login` VALUES ('10000', 'zhangkai', '11111', 'admin', '11111@qq.com');
-INSERT INTO `login` VALUES ('10001', 'a', '12345', 'user', 'a@qq.com');
+INSERT INTO `login` VALUES ('11111', 'a', 'a', 'user', 'a');
 
 -- ----------------------------
 -- Table structure for `studentinfo`
@@ -53,9 +53,9 @@ CREATE TABLE `studentinfo` (
 -- ----------------------------
 -- Records of studentinfo
 -- ----------------------------
-INSERT INTO `studentinfo` VALUES ('00001', 'Software', null, null, null, null);
+INSERT INTO `studentinfo` VALUES ('00001', 'C.S', 'Test', 'Male', 'ChengDu', '120');
 INSERT INTO `studentinfo` VALUES ('10000', 'Software', 'Software', 'Male', 'Beijing', '110');
-INSERT INTO `studentinfo` VALUES ('10001', null, null, null, null, null);
+INSERT INTO `studentinfo` VALUES ('11111', null, null, null, null, null);
 
 -- ----------------------------
 -- Table structure for `takes`
@@ -72,6 +72,8 @@ CREATE TABLE `takes` (
 -- ----------------------------
 -- Records of takes
 -- ----------------------------
+INSERT INTO `takes` VALUES ('00001', 'Database', '90.0');
+INSERT INTO `takes` VALUES ('00001', 'Math', '75.0');
 INSERT INTO `takes` VALUES ('10000', 'C', '100.0');
 INSERT INTO `takes` VALUES ('10000', 'Caculars', '88.0');
 INSERT INTO `takes` VALUES ('10000', 'Database', '90.0');

@@ -2,7 +2,7 @@
 """
 Created on Thu May 16 15:02:47 2019
 
-@author: 10904
+@author: 唐郅杰
 """
 
 import tkinter as tk
@@ -18,7 +18,7 @@ def get_font(size, bold=True):
         isBold = tkf.NORMAL
     return tkf.Font(family='Fixdsys', size=size, weight=isBold)
 
-class LoginFrame():
+class LoginFrame:
     def __init__(self, root,valPath= r'D:/ML_Py/数据库项目/image/valCache/val.png', color='#F0FFF0',
                  db='databasesys'):
         self.Con = mysql.connect(host='localhost', port=3306, user='root',
@@ -35,7 +35,7 @@ class LoginFrame():
         
         self.ValidateMsg = get_validate_img(valPath)
         self.ValidatePhoto = tk.PhotoImage(file=valPath, name='validatephoto')
-        self.WarningPhoto = tk.PhotoImage(file=r'D:/ML_Py/数据库项目/image/warning.png')
+        #self.WarningPhoto = tk.PhotoImage(file=r'D:/ML_Py/数据库项目/image/warning.png')
         
         self.Top = tk.Frame(root,bg='#F0FFF0')
         self.TopLabel = tk.Label(self.Top, text='****** 欢迎登陆 ******', 
@@ -292,9 +292,10 @@ class LoginFrame():
             self.Cur.execute(sql)
             self.Con.commit()
             
-            insert_sql = 'insert into studentinfo values(\'%s\',NULL,NULL,NULL,NULL,NULL)'%id.get()
-            self.Cur.execute(insert_sql)
-            self.Con.commit()
+            if prior.get() == 'user':
+                insert_sql = 'insert into studentinfo values(\'%s\',NULL,NULL,NULL,NULL,NULL)'%id.get()
+                self.Cur.execute(insert_sql)
+                self.Con.commit()
             
             msgbox.showinfo(title='注册成功', message='注册成功!')
         except RuntimeError:
@@ -391,21 +392,6 @@ class MainFrame():
                        font=get_font(25), fg='red')
         msg.pack(side=tk.TOP)
         
-        '''
-        textframe = tk.Frame(top)
-        textframe.pack(side=tk.TOP)
-        text = tk.Listbox(textframe, width=60, height=10, font=get_font(20))
-        for i in range(self.Info['cursor'].rowcount):
-            rs = self.Info['cursor'].fetchone()
-            text.insert(tk.END, '%s       %s\n'%(rs[0],rs[1]))
-        
-        scrollbar = tk.Scrollbar(textframe)
-        
-        scrollbar.config(command=text.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        text.pack(side=tk.LEFT, pady=10)
-        '''
-        
         showframe = tk.Frame(top)
         showframe.pack(side=tk.TOP)
                
@@ -422,13 +408,7 @@ class MainFrame():
         for i in range(self.Info['cursor'].rowcount):
             rs = self.Info['cursor'].fetchone()
             tree.insert('', i, values=(rs[0],rs[1]))
-        '''    
-        def click_test(event):
-            for item in tree.selection():
-                content = tree.item(item, "values")
-                print(content)
-        tree.bind('<Double-Button-1>', click_test)
-        '''
+
         scbar.pack(side=tk.RIGHT, fill=tk.Y)
         tree.pack(side=tk.LEFT, fill=tk.BOTH)
         
@@ -586,6 +566,7 @@ class MainFrame():
             if len(selection)==1:
                 ID = tree.item(selection[0], 'values')[0]
                 Class = tree.item(selection[0], 'values')[1]
+                top.destroy()
                 self.edit_grade_value(ID, Class)
         tree.bind('<Double-Button-1>', edit_grade_row)
         tree.pack(side=tk.LEFT, fill=tk.BOTH)
@@ -629,9 +610,12 @@ class MainFrame():
         
     def create_grade(self):
         top = tk.Toplevel(self.Top)
-        top.geometry('600x600')
+        top.geometry('900x600')
         top.resizable(width=False, height=False)
         top.title('创建新的成绩')
+        
+        msg = tk.Label(top, text='请双击要新增成绩的学生', font=get_font(20), fg='red')
+        msg.pack(side=tk.TOP, pady=20)
         
         sql = 'select * from login natural join studentinfo'
         self.Info['cursor'].execute(sql)
