@@ -22,7 +22,7 @@ class LoginFrame:
     def __init__(self, root,valPath= r'D:/ML_Py/数据库项目/image/valCache/val.png', color='#F0FFF0',
                  db='databasesys'):
         self.Con = mysql.connect(host='localhost', port=3306, user='root',
-                        passwd='', db=db, charset='utf8')
+                        passwd='123456', db=db, charset='utf8')
         self.Cur = self.Con.cursor()
         self.Fonts = []
         self.ValPath = valPath

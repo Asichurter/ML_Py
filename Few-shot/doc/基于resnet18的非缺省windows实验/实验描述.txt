@@ -1,0 +1,18 @@
+训练集：
+良性：均来自windows,[3,3000]KB区间，共800个
+恶性：来自所有类除worm，每个类80个，不足则取一半，共1028个
+验证集：
+良性：均来自windows，由训练集随机抽样得到的200个
+恶性：从训练集中随机抽样得到的257个
+
+
+训练：
+Train Batch=48（显存约束）
+Validate Batch=16
+Resnet18
+Epoch=30
+Adam lr=1e-3 weight_decay=1e-4
+BCELoss
+依据指标调整学习率
+指标：val_loss 耐心=1 系数=0.5 最小学习率=1e-5
+提前终止：False

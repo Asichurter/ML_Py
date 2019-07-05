@@ -135,8 +135,9 @@ if __name__ == '__main__':
                   ['ao','mao','pla'],
                   ['sol','sof']],
     ['好瓜','坏瓜'], melo_data, 1)
-    print('朴素贝叶斯分类结果: ',melo_classifier.predict(['whi','cur','dul','vag','mao','sof'], False))
+
     print('决策树分类结果: ',str(tree.predict(['whi','cur','dul','vag','mao','sof'])))
+    print('朴素贝叶斯分类结果: ',melo_classifier.predict(['whi','cur','dul','vag','mao','sof'], False))
     melo_classifier.print_probs()
     #tree.print_tree()
     
