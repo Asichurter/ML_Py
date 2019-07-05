@@ -15,10 +15,9 @@ from sklearn.neighbors import KNeighborsClassifier as KNN
 from sklearn.svm import SVC
 import random as rd
 
-
-DATA_SAVE_NAME = r'datas/data_0504.npy'
-LABEL_SAVE_NAME = r'datas/label_0504.npy'
-DATA_SPLIT = 0.8
+DATA_SAVE_NAME = r'../datas/0627/train/data.npy'
+LABEL_SAVE_NAME = r'../datas/0627/train/label.npy'
+DATA_SPLIT = 0.3
 TEST_NUM = 1000
 CHANNEL = 5
 TEST_ITERS = 10
@@ -46,29 +45,49 @@ if __name__ == '__main__':
     
     knn_accs = []
     svm_accs = []
+
+    i = 0
     
-    for i in range(TEST_ITERS):
-        sample_index = rd.sample([i for i in range(len(train_data))], CHANNEL)
-    
-        train_data_few = [train_data[sample_index[i]] for i in range(CHANNEL)]
-        train_label_few = [train_label[sample_index[i]] for i in range(CHANNEL)]
-        
+    while i < TEST_ITERS:
+        print(i)
+        #sample_index = rd.sample([i for i in range(len(train_data))], CHANNEL)
+        sample_index = []
+        while len(sample_index) < CHANNEL:
+            index = rd.randint(0,len(train_data)-1)
+            if train_label[index] == 0 or index in sample_index:
+                continue
+            else:
+                sample_index.append(index)
+        while len(sample_index) < 2*CHANNEL:
+            print(len(sample_index))
+            index = rd.randint(0,len(train_data)-1)
+            if train_label[index] == 1 or index in sample_index:
+                continue
+            else:
+                sample_index.append(index)
+                print(sample_index)
+
+        train_data_few = [train_data[index] for index in sample_index]
+        train_label_few = [train_label[index] for index in sample_index]
+        print(train_label_few)
+
         knn = KNN(n_neighbors=1)
         knn.fit(train_data_few, train_label_few)
-        
+
         svm = SVC(gamma='auto')
         svm.fit(train_data_few, train_label_few)
-        
+
         knn_predict = knn.predict(test_data)
         svm_predict = svm.predict(test_data)
-    
+
         knn_acc = np.sum(knn_predict==test_label)/len(knn_predict)
         svm_acc = np.sum(svm_predict==test_label)/len(svm_predict)
         print(knn_acc)
         print(svm_acc)
-        
+
         knn_accs.append(knn_acc)
         svm_accs.append(svm_acc)
+        i += 1
     
     knn_acc_mean = np.mean(knn_accs)
     knn_acc_std = np.std(knn_accs)
@@ -77,7 +96,7 @@ if __name__ == '__main__':
     svm_acc_std = np.std(svm_accs)
 
     plt.figure(figsize=(15,15))
-    plt.title('Using KNN with k=1, acc=%.2f' % knn_accs[len(knn_accs)-1])
+    plt.title('Using KNN with k=1, acc=%.2f' % knn_accs[-1])
     plt.plot([x[0] for x,l in zip(train_data_few,train_label_few) if l==1], [x[1] for x,l in zip(train_data_few,train_label_few) if l==1], 'ro', label='train_malware')
     plt.plot([x[0] for x,l in zip(train_data_few,train_label_few) if l==0], [x[1] for x,l in zip(train_data_few,train_label_few) if l==0], 'bo', label='train_benign')
     plt.plot([x[0] for x,l,pl in zip(test_data,test_label,knn_predict) if l==1 and pl==1], [x[1] for x,l,pl in zip(test_data,test_label,knn_predict) if l==1 and pl==1], 'rx', label='malware_right')
@@ -88,7 +107,7 @@ if __name__ == '__main__':
     plt.show()
     
     plt.figure(figsize=(15,15))
-    plt.title('Using SVM, acc=%.2f' % svm_accs[len(svm_accs)-1])
+    plt.title('Using SVM, acc=%.2f' % svm_accs[-1])
     plt.plot([x[0] for x,l in zip(train_data_few,train_label_few) if l==1], [x[1] for x,l in zip(train_data_few,train_label_few) if l==1], 'ro', label='train_malware')
     plt.plot([x[0] for x,l in zip(train_data_few,train_label_few) if l==0], [x[1] for x,l in zip(train_data_few,train_label_few) if l==0], 'bo', label='train_benign')
     plt.plot([x[0] for x,l,pl in zip(test_data,test_label,svm_predict) if l==1 and pl==1], [x[1] for x,l,pl in zip(test_data,test_label,svm_predict) if l==1 and pl==1], 'rx', label='malware_right')

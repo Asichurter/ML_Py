@@ -22,8 +22,6 @@ BENIGN_BASE = r'C:/Windows/'
 MALWARE_BASE = r'D:/pe/'
 TEST_CHILD_DIR = ['backdoor1/', 'net-worm/']
 SIZE_RANGE = [15, 3000]
-DATA_SAVE_NAME = r'data_0504.npy'
-LABEL_SAVE_NAME = r'label_0504.npy'
 
 deprecated_benign = ['87机械合金幻彩版', '360', 'LuDaShi']
 
@@ -154,6 +152,8 @@ def get_benign_exe_abspath(base=BENIGN_BASE):
         if check_if_executable(base):
             yield base
 
+NPY_DATA_SAVE_PATH = 'D:/ML_Py/Few-shot/datas/0627/'
+
 #读取pe文件的特征同时向量化，将良性文件和恶性文件混合返回
 def mix_samples(mal_base=MALWARE_BASE, each_num=100, split=0.5, seed=2, target_list=None):
     #old_num = 0
@@ -161,7 +161,7 @@ def mix_samples(mal_base=MALWARE_BASE, each_num=100, split=0.5, seed=2, target_l
     data = []
     label = []
     #获得良性文件的迭代器
-    benign =  get_benign_exe_abspath()
+    benign =  get_benign_exe_abspath(base='C:/Program Files/')
     if target_list is None or type(target_list) == list:
         for ex_i,mal_type in enumerate(os.listdir(mal_base) if target_list is None else target_list):
             if mal_type != 'aworm':
@@ -201,17 +201,35 @@ def mix_samples(mal_base=MALWARE_BASE, each_num=100, split=0.5, seed=2, target_l
         except StopIteration:
             raise Exception('良性pe文件的数量不足')
             
-    data = np.array(data)
-    label = np.array(label)
+    # data = np.array(data)
+    # label = np.array(label)
+
+    train_d = data[:split]
+    train_d += data[mal_length:(mal_length+split)]
+    train_l = label[:split]
+    train_l += label[mal_length:(mal_length+split)]
+
+    test_d = data[split:mal_length]
+    test_d += data[(mal_length+split):]
+    test_l = label[split:mal_length]
+    test_l += label[(mal_length+split):]
+
+    return np.array(train_d),np.array(train_l),np.array(test_d),np.array(test_l)
     
-    #使用相同的种子来打乱数据和标签才能保证结果正确
-    assert len(data)==len(label), '数据和标签数量不一致!'
-    np.random.seed(seed)
-    data = np.random.permutation(data)
-    np.random.seed(seed)
-    label = np.random.permutation(label)
-    
-    return data,label     
+    # #使用相同的种子来打乱数据和标签才能保证结果正确
+    # assert len(data)==len(label), '数据和标签数量不一致!'
+    # np.random.seed(seed)
+    # data = np.random.permutation(data)
+    # np.random.seed(seed)
+    # label = np.random.permutation(label)
+
+    if split > 1:
+        return data[:split],label[:split],data[split:],label[split:]
+    elif split >= 0:
+        threshold = int(len(data)*split)
+        return data[:threshold],label[:threshold],data[threshold:],label[threshold:]
+    else:
+        return data,label
 
 
 def normalize_data(data):
@@ -225,14 +243,29 @@ def normalize_data(data):
     return np.nan_to_num(data)
 
 #调用混合数据方法生成数据后保存至文件
-def collect_save_data(normalize=True, num=100, seed=2):
-    data,label = mix_samples(each_num=num, seed=seed)
-    np.save('raw_'+DATA_SAVE_NAME, data)
-    print('First saving successfully done!')
-    if normalize:
-        data = normalize_data(data)
-        np.save(DATA_SAVE_NAME, data)
-        np.save(LABEL_SAVE_NAME, label)
+def collect_save_data(path, normalize=True, num=100, seed=2, target_list=None, split=0):
+    if split >= 0:
+        train_data,train_label,test_data,test_label = mix_samples(each_num=num, seed=seed,
+                                                                  split=split,
+                                                                  target_list=target_list)
+        np.save(path+'raw_train_data.npy', train_data)
+        np.save(path + 'raw_test_data.npy', test_data)
+        np.save(path + 'train_label.npy', train_label)
+        np.save(path + 'test_label.npy', test_label)
+        print('First saving successfully done!')
+        if normalize:
+            train_data = normalize_data(train_data)
+            test_data = normalize_data(test_data)
+            np.save(path+'train_data.npy', train_data)
+            np.save(path + 'test_data.npy', test_data)
+    else:
+        data,label = mix_samples(each_num=num, seed=seed, target_list=target_list, split=split)
+        np.save(path+'raw_data.npy', data)
+        np.save(path+'label.npy', label)
+        if normalize:
+            data =normalize_data(data)
+            np.save(path+'data.npy', data)
+        print('---Done---')
 
 #
 def check_continuing_decrease(history, window=3):
@@ -348,6 +381,9 @@ def validate(model, dataloader, Criteria):
 if __name__ == '__main__':
     next_times = 0
     return_times = 0
+    collect_save_data('D:/ML_Py/Few-shot/datas/0627/test/',
+                        num=205, seed=3, split=5,
+                        target_list=['backdoor1'])
     '''
     path = get_benign_exe_abspath()
     for i,p in enumerate(path):
@@ -370,10 +406,10 @@ if __name__ == '__main__':
     #             dest=r'D:/peimages/few-shot test/class4_basedon_class1/train/benign/',
     #             ratio=205,
     #             mode='c')
-    split_datas(src=r'D:/peimages/few-shot test/class4_basedon_class1/train/benign/',
-                dest=r'D:/peimages/few-shot test/class4_basedon_class1/validate/benign/',
-                ratio=200,
-                mode='x')
+    # split_datas(src=r'D:/peimages/few-shot test/class4_basedon_class1/train/benign/',
+    #             dest=r'D:/peimages/few-shot test/class4_basedon_class1/validate/benign/',
+    #             ratio=200,
+    #             mode='x')
     # create_benign(dest='D:/peimages/oneClasses/trojan1.Buzus/train/benign/',num=1200)
     # create_malware_images(dest=r'D:/peimages/one class 2/extern validate/malware/',
     #                       num_per_class=30,
