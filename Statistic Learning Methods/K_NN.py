@@ -31,7 +31,10 @@ class KNN:
                 neighbors[l] = 1
             if i == self.K-1:
                 radius = d
-        return max(neighbors, key=neighbors.get),radius         
+        if metric == 'Euc':
+            return max(neighbors, key=neighbors.get),radius
+        else:
+            return max(neighbors, key=neighbors.get)
         
     def get_dist(self, x, y, metric):
         if metric == 'Euc':
@@ -41,6 +44,12 @@ class KNN:
         else:
             raise Exception('无法识别的距离度量: ' + str(metric))
 
+    def predict_groups(self, datas, metric='Euc'):
+        results = []
+        for d in datas:
+            p = self.predict(d, metric)
+            results.append(p)
+        return results
   
           
 if __name__ == '__main__':

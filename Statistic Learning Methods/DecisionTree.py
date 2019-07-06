@@ -58,7 +58,10 @@ class DecisionTree:
         self.Data = data
         self.Attr = All_Attr
         self.Root = None
-        self.Criteria = criteria
+        if criteria in ["C4.5", "ID3"]:
+            self.Criteria = criteria
+        else:
+            assert False, "criteria must be ID3 or C4.5!"
         self.grow_tree(data, self.Root, [], True)
         
      
@@ -103,12 +106,18 @@ class DecisionTree:
                             attr_entro.append(0)
                     ratio_mean = np.mean(attr_ratio)
                     #由于信息增益比倾向于采用取值少的属性，而直接使用信息增益又偏向于取值多的属性
-                    #因此将信息增益比作为启发值，选取高于平均信息增益比中，信息增益最大的属性
+                    #因此将信息增益比作为启发值，选取高于平均信息增益比中，信息增益最大的属性(来自西瓜书)
                     #print(attr_entro, attr_ratio, sep='\n')
                     for i,r in enumerate(attr_ratio):
                         if r >= ratio_mean:
                             attr_above_mean[i] = attr_entro[i]
-                    max_attr = max(attr_above_mean, key=attr_above_mean.get)
+                    #根据划分依据来选择最大属性
+                    #如果是ID3，选择信息增益最大的属性
+                    #如果是C4.5，选择信息增益比最大的属性
+                    if self.Criteria == "C4.5":
+                        max_attr = max(attr_above_mean, key=attr_above_mean.get)
+                    else:
+                        max_attr = attr_entro.index(max(attr_entro))
                     #将本节点的分支属性设置为信息增益比例最大的一个属性，以下标的形式
                     node.Attribute = max_attr
                     for v,dat in self.partition_by_attr_val(max_attr, datas).items():
@@ -251,26 +260,23 @@ class DecisionTree:
             for i,child in enumerate(node.Children):
                 self.print_tree(child, hierachy+[i])
        
-    #利用数据进行预测         
-    def predict(self, data):
-        if not data.__len__() == self.Attr.__len__():
-            raise Exception('\n预测时，输入维度与预期维度不一致！' + 
-                            '\n输入的维度: ' + str(data.__len__()) + 
-                            '\n期望的维度: ' + str(self.Attr.__len__()))
-        else:
-            for i,at in enumerate(data):
-                if at not in self.Attr[i]:
-                    raise Exception('\n预测时，输入的属性不在合法的属性表内！' + 
-                                    '\n属性下标: ' + str(i) + 
-                                    '\n合法的输入: ' + str(self.Attr[i]) + 
-                                    '\n实际的输入: ' + str(at))
+    #利用数据进行预测
+    #允许多个数据同时进行预测，因此输入应该是一个二维数组
+    def predict(self, datas):
+        results = []
+        for d in datas:
+            assert len(d)==len(self.Attr), "预期数据维度：%d 不合法的属性维度：%d" %(len(self.Attr),len(d))
+            for i,a in enumerate(d):
+                assert a in self.Attr[i], \
+                    "数据的属性值不在预期内，不合法的属性值: " + a + " 合法属性值：" + self.Attr[i]
             cur = self.Root
             while not cur.is_leaf():
                 for child in cur.Children:
-                    if data[cur.Attribute] == child.Value:
+                    if d[cur.Attribute] == child.Value:
                         cur = child
                         break
-            return cur.Tag
+            results.append(cur.Tag)
+        return results
     
     #根据损失函数计算剪枝前后的损失
     #after_pruning:剪枝前还是后
@@ -332,42 +338,13 @@ class DecisionTree:
                     close_list.append(leaf.Parent) 
             
 if __name__ == '__main__':
-    data = [[['Y',False,False,'S'],False], 
-            [['Y',False,False,'G'],False],
-            [['Y',True,False,'G'],True],
-            [['Y',True,True,'S'],True],
-            [['Y',False,False,'S'],False],
-            [['M',False,False,'S'],False],
-            [['M',False,False,'G'],False],
-            [['M',True,True,'G'],True],
-            [['M',False,True,'VG'],True],
-            [['M',False,True,'VG'],True],
-            [['O',False,True,'VG'],True],
-            [['O',False,True,'G'],True],
-            [['O',True,False,'G'],True],
-            [['O',True,False,'VG'],True],
-            [['O',False,False,'S'],False]]
-
-    disease_data = [[['Y', 'U', True, True], False],
-                    [['Y', 'U', True, False],False],
-                    [['M', 'U', True, True], True],
-                    [['O', 'M', True, True], True],
-                    [['O', 'O', False, True], True],
-                    [['O', 'O', False, False], False],
-                    [['M', 'O', False, False], True],
-                    [['Y', 'M', True, True], False],
-                    [['Y', 'O', False, True], True],
-                    [['O', 'M', False, True], True],
-                    [['Y', 'M', False, False], True],
-                    [['M', 'M', True, False], True],
-                    [['M', 'U', False, True], True],
-                    [['O', 'M', True, False], False]]
+    '''
     disease_tree = DecisionTree([['Y','M','O'],['U','M','O'],[True,False],[False,True]], [True,False], disease_data)
     disease_tree.print_tree()
     print('*****************************************************')
     disease_tree.pruning_with_lossFunc()
     disease_tree.print_tree()
-
+    '''
     '''
     tree = DecisionTree([['Y','M','O'],[False, True],[False, True],['S','G','VG']], [True, False], data)
     tree.print_tree()

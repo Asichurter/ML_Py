@@ -86,7 +86,14 @@ class NaiveBayes:
                                     '\n输入样本的属性对应取值: ' + str(data[attr]))
                 prob_dict[label] *= self.Probs[label][attr][data[attr]]
         return (prob_dict if return_dict else max(prob_dict, key=prob_dict.get))
-        
+
+    def predict_groups(self, datas):
+        results = []
+        for d in datas:
+            p = self.predict(d, False)
+            results.append(p)
+        return results
+
 if __name__ == '__main__':
     #统计学习方法上的数据集
     data = [[[1,'S'],-1],[[1,'M'],-1],[[1,'M'],1],[[1,'S'],1],
