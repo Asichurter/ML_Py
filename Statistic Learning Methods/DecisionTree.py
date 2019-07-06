@@ -50,7 +50,7 @@ class DecisionTree:
     #即[[[属性1...],标签1],[[属性2...],标签2]...]
     #All_Attr:所有属性及其所有可能的取值
     #labels: 所有可能的标签
-    def __init__(self, All_Attr, labels, data, alpha=0.5):
+    def __init__(self, All_Attr, labels, data, alpha=0.5, criteria='C4.5'):
         #用于平衡损失函数中，熵与正则项的系数
         self.Alpha = alpha
         self.All_Child = []
@@ -58,6 +58,7 @@ class DecisionTree:
         self.Data = data
         self.Attr = All_Attr
         self.Root = None
+        self.Criteria = criteria
         self.grow_tree(data, self.Root, [], True)
         
      
