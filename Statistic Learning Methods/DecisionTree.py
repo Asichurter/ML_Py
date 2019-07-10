@@ -338,6 +338,8 @@ class DecisionTree:
                     close_list.append(leaf.Parent) 
             
 if __name__ == '__main__':
+    a = np.array([[1,3],[3,8],[4,5]])
+    print(np.median(a, axis=0))
     '''
     disease_tree = DecisionTree([['Y','M','O'],['U','M','O'],[True,False],[False,True]], [True,False], disease_data)
     disease_tree.print_tree()

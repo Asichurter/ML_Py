@@ -2,6 +2,10 @@ from DecisionTree import DecisionTree
 from NaiveBayes import NaiveBayes
 from K_NN import KNN
 import matplotlib.pyplot as plt
+from KMeans import K_Means
+from K_Median import K_Median
+import random 
+import numpy as np
 
 #code for completing UIP DTI course assignment1
 
@@ -82,31 +86,81 @@ qua3_test_data = [[12,20],
                   [13,14],
                   [7,5],
                   [9,11]]
+def get_data(x, y, r, num):
+        data = []
+        for i in range(num):
+                theta = random.uniform(-2*np.pi, 2*np.pi)
+                R = random.uniform(0,r)
+                data.append([x+R*np.cos(theta), y+R*np.sin(theta)])
+        return data
 
-que1_tree = DecisionTree([['M', 'S', 'D'], [True, False]], [True, False], question1_data, criteria='ID3')
-#que1_tree.print_tree()
+model = K_Means()
+data = []
+data += get_data(-10,10,8,50)
+data += (get_data(0,-5,8,50))
+data += (get_data(10,10,8,50))
+#for i in range(num):
+#    x = random.uniform(-20,20)   
+#    y = random.uniform(-20,20)
+#    data.append([x,y])
 
+model.train(data, k=3, metric='Euc')
+clusters = []
+for c in model.C:
+        clusters.append(c)
+ave = model.Ave
+#print(clusters)
+plt.subplot(1,2,1)
+plt.title("K-Means")
+plt.xlim(-20,20)
+plt.ylim(-20,20)
+plt.plot([x[0] for x in clusters[0]], [x[1] for x in clusters[0]], 'o', color='red')
+plt.plot([x[0] for x in clusters[1]], [x[1] for x in clusters[1]], 'o', color='green')
+plt.plot([x[0] for x in clusters[2]], [x[1] for x in clusters[2]], 'o', color='blue')
+plt.plot([x[0] for x in ave], [x[1] for x in ave], 'x', color='black')
+print(ave)
+#plt.plot([x[0] for x in clusters[3]], [x[1] for x in clusters[3]], 'o', color='yellow')
 
-#predicts = que1_tree.predict(que1_test_data)
-qua2_naive = NaiveBayes([[True,False],[True,False],[True,False],[True,False],[True,False]], ['S','A','C'], 0)
-qua2_naive.train(question2_data)
-#predicts = qua2_naive.predict_groups(qua2_test_data)
-
-qua3_knn = KNN(question3_data, k=3)
-predicts = qua3_knn.predict_groups(qua3_test_data, metric='Man')
-
-print(predicts)
-plt.plot([x[0][0] for x in question3_data if x[1]=='A'],[x[0][1] for x in question3_data if x[1]=='A'], 'o', color='red', label='class A train')
-plt.plot([x[0][0] for x in question3_data if x[1]=='B'],[x[0][1] for x in question3_data if x[1]=='B'], 'o', color='green', label='class B train')
-plt.plot([x[0][0] for x in question3_data if x[1]=='C'],[x[0][1] for x in question3_data if x[1]=='C'], 'o', color='orange', label='class C train')
-plt.plot([x[0][0] for x in question3_data if x[1]=='D'],[x[0][1] for x in question3_data if x[1]=='D'], 'o', color='blue', label='class D train')
-plt.plot([qua3_test_data[i][0] for i in range(5) if predicts[i]=='A'],[qua3_test_data[i][1] for i in range(5) if predicts[i]=='A'],
-         'x', color='red', label='class A test')
-plt.plot([qua3_test_data[i][0] for i in range(5) if predicts[i]=='B'],[qua3_test_data[i][1] for i in range(5) if predicts[i]=='B'],
-         'x', color='green', label='class B test')
-plt.plot([qua3_test_data[i][0] for i in range(5) if predicts[i]=='C'],[qua3_test_data[i][1] for i in range(5) if predicts[i]=='C'],
-         'x', color='orange', label='class C test')
-plt.plot([qua3_test_data[i][0] for i in range(5) if predicts[i]=='D'],[qua3_test_data[i][1] for i in range(5) if predicts[i]=='D'],
-         'x', color='blue', label='class D test')
-plt.legend()
+k_median = K_Median(data, k=3, metric='Euc')
+k_median.fit()
+clusters = k_median.Clusters
+ave = k_median.Centers
+plt.subplot(1,2,2)
+plt.title("K-Median")
+plt.xlim(-20,20)
+plt.ylim(-20,20)
+plt.plot([x[0] for x in clusters[0]], [x[1] for x in clusters[0]], 'o', color='red')
+plt.plot([x[0] for x in clusters[1]], [x[1] for x in clusters[1]], 'o', color='green')
+plt.plot([x[0] for x in clusters[2]], [x[1] for x in clusters[2]], 'o', color='blue')
+plt.plot([x[0] for x in ave], [x[1] for x in ave], 'x', color='black')
 plt.show()
+
+
+
+# que1_tree = DecisionTree([['M', 'S', 'D'], [True, False]], [True, False], question1_data, criteria='ID3')
+# #que1_tree.print_tree()
+
+
+# #predicts = que1_tree.predict(que1_test_data)
+# qua2_naive = NaiveBayes([[True,False],[True,False],[True,False],[True,False],[True,False]], ['S','A','C'], 0)
+# qua2_naive.train(question2_data)
+# #predicts = qua2_naive.predict_groups(qua2_test_data)
+
+# qua3_knn = KNN(question3_data, k=3)
+# predicts = qua3_knn.predict_groups(qua3_test_data, metric='Man')
+
+# print(predicts)
+# plt.plot([x[0][0] for x in question3_data if x[1]=='A'],[x[0][1] for x in question3_data if x[1]=='A'], 'o', color='red', label='class A train')
+# plt.plot([x[0][0] for x in question3_data if x[1]=='B'],[x[0][1] for x in question3_data if x[1]=='B'], 'o', color='green', label='class B train')
+# plt.plot([x[0][0] for x in question3_data if x[1]=='C'],[x[0][1] for x in question3_data if x[1]=='C'], 'o', color='orange', label='class C train')
+# plt.plot([x[0][0] for x in question3_data if x[1]=='D'],[x[0][1] for x in question3_data if x[1]=='D'], 'o', color='blue', label='class D train')
+# plt.plot([qua3_test_data[i][0] for i in range(5) if predicts[i]=='A'],[qua3_test_data[i][1] for i in range(5) if predicts[i]=='A'],
+#          'x', color='red', label='class A test')
+# plt.plot([qua3_test_data[i][0] for i in range(5) if predicts[i]=='B'],[qua3_test_data[i][1] for i in range(5) if predicts[i]=='B'],
+#          'x', color='green', label='class B test')
+# plt.plot([qua3_test_data[i][0] for i in range(5) if predicts[i]=='C'],[qua3_test_data[i][1] for i in range(5) if predicts[i]=='C'],
+#          'x', color='orange', label='class C test')
+# plt.plot([qua3_test_data[i][0] for i in range(5) if predicts[i]=='D'],[qua3_test_data[i][1] for i in range(5) if predicts[i]=='D'],
+#          'x', color='blue', label='class D test')
+# plt.legend()
+# plt.show()
