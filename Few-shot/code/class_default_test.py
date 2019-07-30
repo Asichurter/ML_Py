@@ -13,37 +13,10 @@ from torch.utils.data import DataLoader
 import torchvision as tv
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from utils import validate
 
 early_stop = True
 early_stop_window = 3
-
-def validate(model, dataloader, criteria):
-    '''
-    使用指定的dataloader验证模型\n
-    model:训练的模型\n
-    dataloader:验证的数据加载器\n
-    criteria:损失函数\n
-    '''
-    val_a = 0
-    val_c = 0
-    val_loss = 0.
-    # 将模型调整为测试状态
-    model.eval()
-    for data, label in dataloader:
-        data = data.cuda()
-        out = model(data)
-
-        # 同训练阶段一样
-        labels = [[1, 0] if L == 0 else [0, 1] for L in label]
-        labels = t.FloatTensor(labels).cuda()
-
-        loss = criteria(out, labels)
-        val_loss += loss.data.item()
-        pre_label = t.LongTensor([0 if x[0] >= x[1] else 1 for x in out])
-        val_a += pre_label.shape[0]
-        val_c += (pre_label == label).sum().item()
-    return val_c / val_a, val_loss
-
 
 # 最大迭代次数
 MAX_ITER = 15
