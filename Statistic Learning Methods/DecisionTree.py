@@ -50,31 +50,46 @@ class DecisionTree:
     #即[[[属性1...],标签1],[[属性2...],标签2]...]
     #All_Attr:所有属性及其所有可能的取值
     #labels: 所有可能的标签
-    def __init__(self, All_Attr, labels, data, alpha=0.5, criteria='C4.5'):
+    def __init__(self, data, alpha=0.5, criteria='C4.5'):
         #用于平衡损失函数中，熵与正则项的系数
         self.Alpha = alpha
         self.All_Child = []
-        self.Labels = labels
+        #self.Labels = labels
         self.Data = data
-        self.Attr = All_Attr
+        #self.Attr = All_Attr
         self.Root = None
+        self.extract_values_labels(self.Data)
         if criteria in ["C4.5", "ID3"]:
             self.Criteria = criteria
         else:
             assert False, "criteria must be ID3 or C4.5!"
         self.grow_tree(data, self.Root, [], True)
-        
-     
-    #建立决策树的递归方法
-    #datas:当前节点的数据
-    #node:当前的节点
-    #depre_attr:当前节点之前已经被用掉的属性的下标
-    #root:是否是在建立根节点
-    #注意：
-    #1.建树的原则是：将数据data全部存储在叶节点，因此内部节点实际上是没有数据的
-    #2.内部节点和叶节点公用一个节点类，内部节点使用Attribute属性来标识该节点的判断依据的属性下标
-    #叶节点使用Tag属性来表示叶节点对应的标签，所有节点的Value属性来表示父节点到本节点的属性取值
+
+    def extract_values_labels(self, datas):
+        self.Attr = [set() for i in range(len(datas[0][0]))]
+        self.Labels = set()
+        for item in datas:
+            data,label = item
+            assert len(data)==len(self.Attr), "数据维度不一致！"
+            for i,val in enumerate(data):
+                if type(val) != str or type(val) != bool:
+                    if self.Attr[i] is not None:
+                        self.Attr[i] = None    # 发现第一个连续值，将对应维度的值域设为None
+                else:
+                    assert self.Attr[i] is not None, "连续值和字符串同时出现在同一个维度中！dim=%d"%i
+                    self.Attr[i].add(val)             # 将值添加到对应维度的值域集合中
+            self.Labels.add(label)   # 将标签添加到对应维度的值域集合中
+
     def grow_tree(self, datas, node, depre_attr, root=False):
+        '''建立决策树的递归方法
+        datas:当前节点的数据
+        node:当前的节点
+        depre_attr:当前节点之前已经被用掉的属性的下标
+        root:是否是在建立根节点
+        注意：
+        1.建树的原则是：将数据data全部存储在叶节点，因此内部节点实际上是没有数据的
+        2.内部节点和叶节点公用一个节点类，内部节点使用Attribute属性来标识该节点的判断依据的属性下标
+        叶节点使用Tag属性来表示叶节点对应的标签，所有节点的Value属性来表示父节点到本节点的属性取值'''
         if root:
             check_res = self.check_datas_type(datas)
             if check_res is None:
@@ -335,26 +350,63 @@ class DecisionTree:
                     #理由：
                     #1.如果剪枝了，则子节点的应该消失，或者说根本不应该检索
                     #2.如果没有剪枝，则同一父节点的叶节点就没有必要再对同一个父节点进行检索了，因为两者完全相同
-                    close_list.append(leaf.Parent) 
+                    close_list.append(leaf.Parent)
+                
             
 if __name__ == '__main__':
-    a = np.array([[1,3],[3,8],[4,5]])
-    print(np.median(a, axis=0))
-    '''
-    disease_tree = DecisionTree([['Y','M','O'],['U','M','O'],[True,False],[False,True]], [True,False], disease_data)
-    disease_tree.print_tree()
-    print('*****************************************************')
-    disease_tree.pruning_with_lossFunc()
-    disease_tree.print_tree()
-    '''
-    '''
-    tree = DecisionTree([['Y','M','O'],[False, True],[False, True],['S','G','VG']], [True, False], data)
-    tree.print_tree()
-    print(tree.predict(['O',False,False,'S']))
-    #tree.pruning_with_lossFunc()
-    #print('\n******************剪枝前后的分界线*********************')  
-    #tree.print_tree()  
-    '''
+    disease_data = [
+        [['Y','U',True,True],False],
+        [['Y','U',True,False],False],
+        [['M','U',True,True],True],
+        [['O','M',True,True],True],
+        [['O','O',False,True],True],
+        [['O','O',False,False],False],
+        [['M','O',False,False],True],
+        [['Y','M',True,True],False],
+        [['Y','O',False,True],True],
+        [['O','M',False,True],True],
+        [['Y','M',False,False],True],
+        [['M','M',True,False],True],
+        [['M','U',False,True],True],
+        [['O','M',True,False],False]
+    ]
+    loan_data = np.array([
+        [['y',False,False,'f'],False],
+        [['y',False,False,'g'],False],
+        [['y',True,False,'g'],True],
+        [['y',True,True,'f'],True],
+        [['y',False,False,'f'],False],
+        [['m',False,False,'f'],False],
+        [['m',False,False,'g'],False],
+        [['m',True,True,'g'],True],
+        [['m',False,True,'e'],True],
+        [['m',False,True,'e'],True],
+        [['o',False,True,'e'],True],
+        [['o',False,True,'g'],True],
+        [['o',True,False,'g'],True],
+        [['o',True,False,'e'],True],
+        [['o',False,False,'f'],False]
+    ])
+
+    # disease_tree = DecisionTree([['Y','M','O'],['U','M','O'],[True,False],[False,True]],
+    #                             [True,False],
+    #                             disease_data,
+    #                             criteria='ID3')
+    # disease_tree.print_tree()
+    # print('*****************************************************')
+    # disease_tree.pruning_with_lossFunc()
+    # disease_tree.print_tree()
+    # loan_tree = DecisionTree([
+    #                             ['y','m','o'],
+    #                             [True,False],
+    #                             [True,False],
+    #                             ['f','g','e']
+    #                          ],
+    #                             [True,False],
+    #                             loan_data,
+    #                             criteria='ID3')
+    loan_tree = DecisionTree(loan_data)
+    loan_tree.print_tree()
     '''
     a = np.array([[1,2,3],[4,5,6],[7,8,9]])
     b = np.array([[2,2,2,1],[2,2,2,1],[2,2,2,1]])
