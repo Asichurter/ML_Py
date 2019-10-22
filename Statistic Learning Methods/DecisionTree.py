@@ -6,6 +6,8 @@ Created on Sat Dec 22 12:46:20 2018
 """
 import math
 import numpy as np
+import random as rd
+import matplotlib.pyplot as plt
     
 #决策树节点类    
 class Node:
@@ -19,6 +21,7 @@ class Node:
         self.Attribute = None
         #本节点作为决策划分，依据的属性的取值
         self.Value = None
+        self.Threshold = None
         
     def is_leaf(self):
         return not self.Tag is None
@@ -45,20 +48,22 @@ class Node:
 
 #决策树
 class DecisionTree:
-    #老样子，data的数据格式：
+    #data的数据格式：
     #[[属性...],标签]组成的一个列表
     #即[[[属性1...],标签1],[[属性2...],标签2]...]
     #All_Attr:所有属性及其所有可能的取值
     #labels: 所有可能的标签
-    def __init__(self, data, alpha=0.5, criteria='C4.5'):
+    def __init__(self, data, alpha=0.5, criteria='C4.5', least_gain=0.1):
         #用于平衡损失函数中，熵与正则项的系数
         self.Alpha = alpha
+        self.LeastGain = least_gain
         self.All_Child = []
         #self.Labels = labels
         self.Data = data
         #self.Attr = All_Attr
         self.Root = None
         self.extract_values_labels(self.Data)
+        print(self.Attr)
         if criteria in ["C4.5", "ID3"]:
             self.Criteria = criteria
         else:
@@ -66,19 +71,44 @@ class DecisionTree:
         self.grow_tree(data, self.Root, [], True)
 
     def extract_values_labels(self, datas):
+        '''
+        遍历数据，从数据中获取所有属性的可能取值和标签
+        '''
         self.Attr = [set() for i in range(len(datas[0][0]))]
         self.Labels = set()
         for item in datas:
             data,label = item
             assert len(data)==len(self.Attr), "数据维度不一致！"
             for i,val in enumerate(data):
-                if type(val) != str or type(val) != bool:
+                if type(val) is not str and type(val) is not bool:    # 发现连续值属性
                     if self.Attr[i] is not None:
                         self.Attr[i] = None    # 发现第一个连续值，将对应维度的值域设为None
                 else:
                     assert self.Attr[i] is not None, "连续值和字符串同时出现在同一个维度中！dim=%d"%i
                     self.Attr[i].add(val)             # 将值添加到对应维度的值域集合中
             self.Labels.add(label)   # 将标签添加到对应维度的值域集合中
+
+    def process_cont_val(self, datas):
+        assert len(datas) != 0, "节点处无数据，不需要处理连续值！"
+        cont_attr_thresh = {}
+        for i,attr in enumerate(self.Attr):
+            if attr is None:
+                cont_attr_thresh[i] = 0   # 找到所有是连续属性的属性维度
+
+        for attr_index in cont_attr_thresh.keys():         # 处理每个连续属性
+            datas.sort(key=lambda x:x[0][attr_index])
+            can_thresh = set()
+            for i in range(len(datas)-1):
+                can_thresh.add( (datas[i][0][attr_index] + datas[i+1][0][attr_index])/2 )   # 取排序后的每个值的中点值作为待选截断点
+
+            can_thresh_entro = {}
+            for can_item in can_thresh:
+                can_thresh_entro[can_item],_ = self.cal_entro_ratio(attr_index,datas,cont_thresh=can_item) # 计算每个截断值的信息增益
+
+            cont_attr_thresh[attr_index] = max(can_thresh_entro, key=can_thresh_entro.get)  # 将对应连续值属性的截断值设置为信息增益最大的截断值
+
+        cont_attr_thresh.setdefault(None)
+        return cont_attr_thresh
 
     def grow_tree(self, datas, node, depre_attr, root=False):
         '''建立决策树的递归方法
@@ -99,20 +129,28 @@ class DecisionTree:
             else:
                 self.Root = Node(None, datas, check_res)
         else:
+            def make_leaf(myself):
+                myself.All_Child.append(node)
+                node.Datas = datas
+                node.Tag = myself.find_majority(datas, myself.Data)
+
+            attr_thresh_dict = self.process_cont_val(datas)           # 获取连续值属性及其对应的截断值
+            assert len(set(attr_thresh_dict.keys()).intersection(set(depre_attr)))==0, \
+                "连续值属性加入到了弃用列表中！弃用列表:%s，连续值属性:%s"%(depre_attr,attr_thresh_dict.keys())
             #如果本节点无数据，则使用整棵树的数据来进行多数表决，同时停止递归
-            if datas.__len__() == 0:
+            if len(datas) == 0:
                 node.Tag = self.find_majority(datas, self.Data)
             else:
                 check_res = self.check_datas_type(datas)
                 #如果发现当前节点的类还有不同，同时属性还没有用完
                 #则找到信息增益比最大的属性，划分后递归调用
-                if check_res is None and not depre_attr.__len__() == self.Attr.__len__():
+                if check_res is None and len(depre_attr) != len(self.Attr):
                     attr_ratio = []
                     attr_entro = []
                     attr_above_mean = {}
-                    for i in range(self.Attr.__len__()):
+                    for i in range(len(self.Attr)):
                         if i not in depre_attr:
-                            g,r = self.cal_entro_ratio(i, datas)
+                            g,r = self.cal_entro_ratio(i, datas, cont_thresh=attr_thresh_dict.get(i))  # 如果该属性属于连续值属性，则将对应的截断值输入
                             attr_ratio.append(r)
                             attr_entro.append(g)
                         #就算属性已经被废弃使用但还是要填入占位，因为属性是基于下标的
@@ -131,39 +169,56 @@ class DecisionTree:
                     #如果是C4.5，选择信息增益比最大的属性
                     if self.Criteria == "C4.5":
                         max_attr = max(attr_above_mean, key=attr_above_mean.get)
+                        entro_gain = max(attr_above_mean)
                     else:
                         max_attr = attr_entro.index(max(attr_entro))
+                        entro_gain = max(attr_entro)
+                        # print(max(attr_entro))
+
+                    if entro_gain < self.LeastGain:      # 若信息增益（率）小于阈值，则将当前制作为叶节点并且直接停止递归
+                        make_leaf(self)
+                        return
+
                     #将本节点的分支属性设置为信息增益比例最大的一个属性，以下标的形式
                     node.Attribute = max_attr
-                    for v,dat in self.partition_by_attr_val(max_attr, datas).items():
+                    # 如果是连续值属性，在划分的时候也要输入截断值
+                    for v,dat in self.partition_by_attr_val(max_attr, datas, cont_thresh=attr_thresh_dict.get(max_attr)).items():
                         child_node = Node(node)
                         #将对应的子节点的分支取值设置为对应的值
                         child_node.Value = v
+                        child_node.Threshold = attr_thresh_dict.get(max_attr)
                         node.Children.append(child_node)
+                        # 如果使用的是连续值属性，则不加入到弃用列表中
+                        new_depre_attr = depre_attr+[max_attr] if max_attr not in attr_thresh_dict.keys() else depre_attr
                         #递归调用，不同的是属性的弃用表需要加上当前用于分类的属性
-                        self.grow_tree(dat, child_node, depre_attr+[max_attr])
+                        self.grow_tree(dat, child_node, new_depre_attr)
                         
                 #否则，当前的这个node为叶节点，设置叶节点的属性，将数据储存在其中
                 else:
-                    self.All_Child.append(node)
-                    node.Datas = datas
-                    node.Tag = self.find_majority(datas, self.Data)
+                    make_leaf(self)
+                    # self.All_Child.append(node)
+                    # node.Datas = datas
+                    # node.Tag = self.find_majority(datas, self.Data)
              
     #利用公式，gR(D,A)=g(D,A)/HA(D)来计算信息增益比
     #本建树算法采用的是改进后的ID3，即C4.5
     #attr:计算的属性的下标
-    def cal_entro_ratio(self, attr, datas):
-        attr_entro = self.cal_entro('attrs', datas, attr)
+    def cal_entro_ratio(self, attr, datas, cont_thresh=None):
+        assert not (self.Attr[attr] is None and cont_thresh is None), "下标为%d的属性为连续值，但是没有提供截断值！"%attr
+        attr_entro = self.cal_entro('attrs', datas, attr, cont_thresh=cont_thresh)
         #如果发现属性值的熵为0，代表就算当前所有数据都是属于这个属性的，那么使用这个属性来分割不会得到任何收益
         if attr_entro == 0:
             return 0,0
         data_entro = self.cal_entro('types', datas)
-        datas_split = {at:[] for at in self.Attr[attr]}
+        datas_split = {at:[] for at in self.Attr[attr]} if cont_thresh is None else {False:[], True:[]}
         for data in datas:
-            datas_split[data[0][attr]].append(data)
+            if cont_thresh is None:
+                datas_split[data[0][attr]].append(data)    # 将数据按照某属性值进行分入列表
+            else:
+                datas_split[data[0][attr] >= cont_thresh].append(data)   # 对连续值，将将数据按照属性值是否大于等于截断值划分入列表中
         attr_data_entro = 0
         for at,dat in datas_split.items():
-            attr_data_entro += dat.__len__()/datas.__len__()*self.cal_entro('types', dat)
+            attr_data_entro += len(dat)/len(datas)*self.cal_entro('types', dat)    # 将按属性分开的数据计算类别熵
         return data_entro - attr_data_entro,(data_entro - attr_data_entro)/attr_entro  
         #return data_entro - attr_data_entro               
     
@@ -172,8 +227,8 @@ class DecisionTree:
     #attr_type==types：计算按类型分布的信息熵
     #attr_type==attrs: 计算按属性值分布的信息熵
     #attr:如果是按属性值分布求熵的话，想要计算的属性的下标
-    def cal_entro(self, attr_type, datas, attr=None):
-        length = datas.__len__()
+    def cal_entro(self, attr_type, datas, attr=None, cont_thresh=None):
+        length = len(datas)
         total = 0
         if attr_type == 'types':
             types = {}
@@ -194,20 +249,29 @@ class DecisionTree:
                 raise Exception('\n计算熵时，指定为计算数据集关于特征attr的熵，但是指定了非法的attr下标！'+
                                 '\n指定下标：' + str(attr))
             attrs = {}
-            for at in self.Attr[attr]:
-                attrs[at] = 0
+            if cont_thresh is None:
+                for at in self.Attr[attr]:
+                    attrs[at] = 0
+            else:
+                attrs[False] = 0
+                attrs[True] = 0     # 如果为连续值，则只指定大于等于或者小于的情况两个值
+
             for data in datas:
                 if not data.__len__() == 2 or not data[0].__len__() == self.Attr.__len__():
                     raise Exception('\n输入向量维度与预期不一致!' + 
                                     '\n非法向量: ' + str(data))
                 #先进行计数
-                if data[0][attr] in self.Attr[attr]:
-                    attrs[data[0][attr]] += 1
+                if cont_thresh is None:
+                    if data[0][attr] in self.Attr[attr]:
+                        attrs[data[0][attr]] += 1
+                    else:
+                        raise Exception('\n给定的数据中，存在不在合理属性值列表中的非法属性取值!' +
+                                        '\n数据: ' + str(data) +
+                                        '\n属性下标: ' + str(attr) +
+                                        '\n合理取值: ' + str(self.Attr[attr]))
                 else:
-                    raise Exception('\n给定的数据中，存在不在合理属性值列表中的非法属性取值!'+
-                                     '\n数据: ' + str(data) +
-                                     '\n属性下标: '+ str(attr) + 
-                                     '\n合理取值: '+ str(self.Attr[attr]))
+                    attrs[data[0][attr] >= cont_thresh] += 1    # 连续值时，根据是否大于等于截断值将数据分为两个类
+
             for at,num in attrs.items():
                 #0log0定义为0
                 if not num == 0:
@@ -234,13 +298,17 @@ class DecisionTree:
     #依据给定的属性，将数据按照属性值进行划分
     #返回的类型是一个字典，字典的键是该属性的对应取值，值是对应取值的所有数据      
     #attr:用于划分数据集的属性下标      
-    def partition_by_attr_val(self, attr, datas):
-        res = {v:[] for i,v in enumerate(self.Attr[attr])}
+    def partition_by_attr_val(self, attr, datas, cont_thresh=None):
+        res = {v:[] for i,v in enumerate(self.Attr[attr])} if cont_thresh is None else \
+                {True:[], False:[]}
         for i,data in enumerate(datas):
             if not data.__len__() == 2 or not data[0].__len__() == self.Attr.__len__():
                 raise Exception('\n输入的数据中，维度与预期的不一致!'+
                                 '\n数据下标: ' + str(i))
-            res[data[0][attr]].append(data)
+            if cont_thresh is None:
+                res[data[0][attr]].append(data)
+            else:
+                res[data[0][attr] >= cont_thresh].append(data)
         return res
     
     #寻找数据集中的占大多数的标签，这是多数表决时调用的方法
@@ -266,8 +334,10 @@ class DecisionTree:
             node = self.Root
         print('')
         print('层次: ' + str(hierachy))
-        print('节点属性划分: ' + str(node.Attribute))
         print('节点属性值: ' + str(node.Value))
+        print('节点截断值: ' + str(node.Threshold))
+        print("----------------------------------")
+        print('节点属性划分: ' + str(node.Attribute))
         if not node.Tag is None:
             print('叶节点的数据: ' + str(node.Datas))
             print('叶节点标签: ' + str(node.Tag))
@@ -278,16 +348,24 @@ class DecisionTree:
     #利用数据进行预测
     #允许多个数据同时进行预测，因此输入应该是一个二维数组
     def predict(self, datas):
+        cont_attrs = [index for index in range(len(self.Attr)) if self.Attr[index] is None]  # 获取所有连续值属性下标
+        def cont_comp(thresh, drt, val):
+            return (drt and val >= thresh) | (not drt and val < thresh)
+
         results = []
         for d in datas:
             assert len(d)==len(self.Attr), "预期数据维度：%d 不合法的属性维度：%d" %(len(self.Attr),len(d))
             for i,a in enumerate(d):
-                assert a in self.Attr[i], \
+                assert self.Attr[i] is None or a in self.Attr[i], \
                     "数据的属性值不在预期内，不合法的属性值: " + a + " 合法属性值：" + self.Attr[i]
             cur = self.Root
             while not cur.is_leaf():
                 for child in cur.Children:
-                    if d[cur.Attribute] == child.Value:
+                    if cur.Attribute in cont_attrs:
+                        if cont_comp(child.Threshold, child.Value, d[cur.Attribute]):
+                            cur = child
+                            break
+                    elif d[cur.Attribute] == child.Value:
                         cur = child
                         break
             results.append(cur.Tag)
@@ -351,7 +429,14 @@ class DecisionTree:
                     #1.如果剪枝了，则子节点的应该消失，或者说根本不应该检索
                     #2.如果没有剪枝，则同一父节点的叶节点就没有必要再对同一个父节点进行检索了，因为两者完全相同
                     close_list.append(leaf.Parent)
-                
+
+def get_square_region_data(x, y, x_w, y_w, num, label):
+    datas = []
+    for i in range(num):
+        data_x = rd.uniform(x,x+x_w)
+        data_y = rd.uniform(y,y+y_w)
+        datas.append([[data_x,data_y],label])
+    return datas
             
 if __name__ == '__main__':
     disease_data = [
@@ -388,35 +473,42 @@ if __name__ == '__main__':
         [['o',False,False,'f'],False]
     ])
 
-    # disease_tree = DecisionTree([['Y','M','O'],['U','M','O'],[True,False],[False,True]],
-    #                             [True,False],
-    #                             disease_data,
-    #                             criteria='ID3')
+    cont_data = []
+    cont_data += get_square_region_data(0,0,5,5,20,True)
+    cont_data += get_square_region_data(-5,2,5,3,10,True)
+    cont_data += get_square_region_data(-5,0,5,2,10,False)
+    cont_data += get_square_region_data(-5,-5,5,5,20,False)
+    cont_data += get_square_region_data(0,-5,5,5,20,False)
+
+    cont_test_data = []
+    cont_test_data += get_square_region_data(0,0,5,5,20,True)
+    cont_test_data += get_square_region_data(-5,2,5,3,10,True)
+    cont_test_data += get_square_region_data(-5,0,5,2,10,False)
+    cont_test_data += get_square_region_data(-5,-5,5,5,20,False)
+    cont_test_data += get_square_region_data(0,-5,5,5,20,False)
+
+    cont_tree = DecisionTree(cont_data, least_gain=1e-2, criteria='ID3')
+    cont_tree.print_tree()
+
+    plt.scatter([x[0][0] for x in cont_data if x[1]], [x[0][1] for x in cont_data if x[1]], color='red')
+    plt.scatter([x[0][0] for x in cont_data if not x[1]], [x[0][1] for x in cont_data if not x[1]], color='blue')
+    # plt.show()
+
+    correct_counter = 0
+    for item in cont_test_data:
+        test_data,test_label = item
+        pred = cont_tree.predict([test_data])[0]
+        if pred == test_label:
+            correct_counter += 1
+    print("acc: %f"%(correct_counter/len(cont_test_data)))
+
+    # disease_tree = DecisionTree(disease_data)
     # disease_tree.print_tree()
     # print('*****************************************************')
     # disease_tree.pruning_with_lossFunc()
     # disease_tree.print_tree()
-    # loan_tree = DecisionTree([
-    #                             ['y','m','o'],
-    #                             [True,False],
-    #                             [True,False],
-    #                             ['f','g','e']
-    #                          ],
-    #                             [True,False],
-    #                             loan_data,
-    #                             criteria='ID3')
-    loan_tree = DecisionTree(loan_data)
-    loan_tree.print_tree()
-    '''
-    a = np.array([[1,2,3],[4,5,6],[7,8,9]])
-    b = np.array([[2,2,2,1],[2,2,2,1],[2,2,2,1]])
-    #print(a*b)
-    c = np.array([[2],[2]])
-    d = c[0]
-    print(a[0].shape[0])
-    if c[0] == c[1]:
-        print('1')
-    '''
+    # loan_tree = DecisionTree(loan_data, criteria='ID3')
+    # loan_tree.print_tree()
 
                 
                 
